@@ -7,6 +7,7 @@ import {
   TouchableWithoutFeedback,
   Animated,
   Dimensions,
+  Platform,
 } from "react-native";
 import { Edit3, Trash2, X } from "lucide-react-native";
 import Colors from "../constants/colors";
@@ -30,39 +31,39 @@ interface ActionMenuProps {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const MENU_WIDTH = 280;
-const MENU_ITEM_HEIGHT = 64;
+const MENU_WIDTH = 250;
+const MENU_PADDING = 10;
+const ITEM_HEIGHT = 48;
+const EDGE_MARGIN = 20; // Minimum margin from screen edges
+const MIN_DISTANCE_FROM_ANCHOR = 15; // Minimum space between press point and menu
 
 export default function ActionMenu({ visible, onClose, options, anchorPosition }: ActionMenuProps) {
   const { settings } = useSettings();
-  const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
     if (visible) {
-      // Haptic feedback on show
       if (settings.hapticFeedback) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
 
-      // Animate in from the side
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 200,
+          duration: 150,
           useNativeDriver: true,
         }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          tension: 80,
-          friction: 9,
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 150,
+          friction: 12,
           useNativeDriver: true,
         }),
       ]).start();
     } else {
-      // Reset animations
-      slideAnim.setValue(SCREEN_WIDTH);
       fadeAnim.setValue(0);
+      scaleAnim.setValue(0.95);
     }
   }, [visible, settings.hapticFeedback]);
 
@@ -76,29 +77,41 @@ export default function ActionMenu({ visible, onClose, options, anchorPosition }
 
   if (!visible) return null;
 
-  // Calculate menu position - appear on the right side of the item
-  let menuRight = 20;
-  let menuTop = SCREEN_HEIGHT / 2 - (options.length * MENU_ITEM_HEIGHT) / 2;
+  // --- POSITIONING LOGIC ---
+  const menuHeight = options.length * ITEM_HEIGHT + MENU_PADDING * 2 + (options.length > 0 ? options.length * 2 : 0);
+  
+  let menuLeft = EDGE_MARGIN;
+  let menuTop = (SCREEN_HEIGHT - menuHeight) / 2;
 
-  // If anchor position is provided, position menu beside it
   if (anchorPosition) {
-    // Position menu to the right of the touch point, or left if too close to right edge
-    if (anchorPosition.x < SCREEN_WIDTH / 2) {
-      // Item is on left side, show menu on right
-      menuRight = 20;
-      menuTop = Math.max(
-        20,
-        Math.min(anchorPosition.y - (options.length * MENU_ITEM_HEIGHT) / 2, SCREEN_HEIGHT - (options.length * MENU_ITEM_HEIGHT) - 20)
-      );
+    const { x: anchorX, y: anchorY } = anchorPosition;
+
+    // 1. Horizontal Position: Determine if there is more space on the left or right of the anchor point.
+    // Prefer showing the menu on the side that was *not* pressed for visual separation (e.g., if pressed on the left side of the screen, show menu on the right).
+    if (anchorX < SCREEN_WIDTH / 2) {
+      // Pressed on left side: Show menu on the right of the anchor.
+      menuLeft = anchorX + MIN_DISTANCE_FROM_ANCHOR;
+      // Ensure it doesn't push off the right edge. If it does, snap it left.
+      if (menuLeft + MENU_WIDTH > SCREEN_WIDTH - EDGE_MARGIN) {
+        menuLeft = SCREEN_WIDTH - MENU_WIDTH - EDGE_MARGIN;
+      }
     } else {
-      // Item is on right side, show menu on left
-      menuRight = SCREEN_WIDTH - MENU_WIDTH - 20;
-      menuTop = Math.max(
-        20,
-        Math.min(anchorPosition.y - (options.length * MENU_ITEM_HEIGHT) / 2, SCREEN_HEIGHT - (options.length * MENU_ITEM_HEIGHT) - 20)
-      );
+      // Pressed on right side: Show menu on the left of the anchor.
+      menuLeft = anchorX - MENU_WIDTH - MIN_DISTANCE_FROM_ANCHOR;
+      // Ensure it doesn't push off the left edge.
+      if (menuLeft < EDGE_MARGIN) {
+        menuLeft = EDGE_MARGIN;
+      }
     }
+
+    // 2. Vertical Position: Center menu's vertical middle near the anchor point.
+    menuTop = anchorY - menuHeight / 2;
+    
+    // Boundary checks (Top and Bottom)
+    menuTop = Math.max(EDGE_MARGIN, menuTop);
+    menuTop = Math.min(menuTop, SCREEN_HEIGHT - menuHeight - EDGE_MARGIN);
   }
+
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -106,9 +119,7 @@ export default function ActionMenu({ visible, onClose, options, anchorPosition }
         <Animated.View
           style={[
             styles.overlay,
-            {
-              opacity: fadeAnim,
-            },
+            { opacity: fadeAnim },
           ]}
         >
           <TouchableWithoutFeedback>
@@ -116,39 +127,32 @@ export default function ActionMenu({ visible, onClose, options, anchorPosition }
               style={[
                 styles.menu,
                 {
-                  right: menuRight,
+                  left: menuLeft,
                   top: menuTop,
-                  transform: [{ translateX: slideAnim }],
+                  width: MENU_WIDTH,
+                  transform: [{ scale: scaleAnim }],
                 },
               ]}
             >
-              <View style={styles.menuHeader}>
-                <Text style={styles.menuTitle}>Options</Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
-                  <X size={20} color={Colors.textLight} />
-                </TouchableOpacity>
-              </View>
-
               <View style={styles.menuContent}>
                 {options.map((option, index) => {
                   const IconComponent = option.icon;
                   const color = option.destructive
                     ? "#FF3B30"
-                    : option.color || Colors.text;
+                    : option.color || Colors.darkGreen;
+
                   return (
                     <TouchableOpacity
                       key={index}
                       style={[
                         styles.menuItem,
-                        index === options.length - 1 && styles.menuItemLast,
+                        index < options.length - 1 && styles.menuItemSeparator,
+                        { height: ITEM_HEIGHT, paddingHorizontal: 16 }
                       ]}
                       onPress={() => handleOptionPress(option)}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.iconContainer, { backgroundColor: color + "15" }]}>
-                        <IconComponent size={22} color={color} />
-                      </View>
-                      <View style={styles.menuItemContent}>
+                      <View style={styles.menuItemTextContainer}>
                         <Text style={[styles.menuItemText, { color }]}>
                           {option.label}
                         </Text>
@@ -156,10 +160,20 @@ export default function ActionMenu({ visible, onClose, options, anchorPosition }
                           <Text style={styles.destructiveHint}>This action cannot be undone</Text>
                         )}
                       </View>
+                      <View style={[styles.iconContainer, { backgroundColor: color + "15" }]}>
+                        <IconComponent size={20} color={color} />
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
               </View>
+              
+              {Platform.OS === 'android' && (
+                <TouchableOpacity onPress={onClose} style={styles.cancelButton} activeOpacity={0.7}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+
             </Animated.View>
           </TouchableWithoutFeedback>
         </Animated.View>
@@ -171,72 +185,68 @@ export default function ActionMenu({ visible, onClose, options, anchorPosition }
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    // Note: Removed centering justification/alignment here, relying solely on absolute positioning
   },
   menu: {
     position: "absolute",
-    backgroundColor: Colors.softWhite,
-    borderRadius: 20,
-    width: MENU_WIDTH,
-    shadowColor: "#000",
-    shadowOffset: { width: -4, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 16,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    shadowColor: "#000", 
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 8,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: Colors.border + "30",
-  },
-  menuHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "30",
-    backgroundColor: Colors.cardBackground,
-  },
-  menuTitle: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: Colors.text,
-  },
-  closeButton: {
-    padding: 4,
+    borderColor: Colors.border,
   },
   menuContent: {
-    padding: 8,
+    paddingVertical: MENU_PADDING,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    justifyContent: "space-between",
     gap: 12,
-    borderRadius: 12,
-    marginBottom: 4,
-    minHeight: MENU_ITEM_HEIGHT,
+    marginVertical: 1,
   },
-  menuItemLast: {
-    marginBottom: 0,
+  menuItemSeparator: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  menuItemTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 2,
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+  },
+  destructiveHint: {
+    fontSize: 10,
+    color: Colors.textLight,
+    fontStyle: "italic",
+    marginTop: 2,
   },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
   },
-  menuItemContent: {
-    flex: 1,
+  cancelButton: {
+    backgroundColor: Colors.cream,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
-  menuItemText: {
+  cancelButtonText: {
     fontSize: 16,
-    fontWeight: "600" as const,
-    marginBottom: 2,
-  },
-  destructiveHint: {
-    fontSize: 11,
-    color: Colors.textLight,
-    fontStyle: "italic",
-  },
+    fontWeight: '600' as const,
+    color: Colors.text,
+  }
 });
