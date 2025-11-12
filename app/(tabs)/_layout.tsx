@@ -1,7 +1,6 @@
-// File: app/(tabs)/_layout.tsx
-
 import { Tabs } from "expo-router";
-import { Home, Heart, Target, Calendar, MapPin, Settings, Sparkles } from "lucide-react-native";
+// Only importing icons for the five chosen tabs
+import { Home, Heart, Target, MapPin, Settings } from "lucide-react-native"; 
 import React from "react";
 import Colors from "../../constants/colors";
 
@@ -32,25 +31,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Heart color={color} size={size} />,
         }}
       />
-      <Tabs.Screen
-        name="vision" // NEW SCREEN ADDED HERE
-        options={{
-          title: "Vision",
-          tabBarIcon: ({ color, size }) => <Sparkles color={color} size={size} />,
-        }}
-      />
+      {/* Goals now handles both Goals and Dates content. 
+        Dates tab (dates.tsx) is still in the directory but now orphans, accessed via Goals.
+      */}
       <Tabs.Screen
         name="goals"
         options={{
-          title: "Goals",
+          title: "Goals & Plan", // Updated title for clarity
           tabBarIcon: ({ color, size }) => <Target color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="dates"
-        options={{
-          title: "Dates",
-          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -63,10 +51,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: "More", // Utility tab for Settings and Vision Board navigation
           tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
         }}
       />
+      {/* The 'vision' and 'dates' files must remain in the app/(tabs)/ directory 
+        but without a corresponding <Tabs.Screen> entry, they become hidden pages 
+        accessible only via deep links or navigation from another screen.
+      */}
     </Tabs>
   );
 }

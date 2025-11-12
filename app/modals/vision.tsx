@@ -14,6 +14,7 @@ import * as Haptics from "expo-haptics";
 import type { VisionBoardItem } from "../../types";
 
 export default function VisionScreen() {
+  // Correctly importing the new functions
   const { visionBoard, addVisionItem, deleteVisionItem, updateVisionItem } = useApp();
   const { settings } = useSettings();
   const insets = useSafeAreaInsets();
@@ -46,11 +47,8 @@ export default function VisionScreen() {
   const handleSave = () => {
     if (!title.trim() || !imageUrl.trim()) return;
 
-    // NOTE: We need to ensure deleteVisionItem and updateVisionItem are added to AppContext.tsx later.
-    // For now, only using addVisionItem which exists.
-
     if (editingItem) {
-      // Temporary placeholder logic for update, assuming updateVisionItem will be added
+      // Corrected to use updateVisionItem
       updateVisionItem(editingItem.id, {
         title: title.trim(),
         category: category.trim(),
@@ -198,7 +196,8 @@ export default function VisionScreen() {
         cancelText="Cancel"
         onConfirm={() => {
           if (itemToDelete) {
-            // deleteVisionItem(itemToDelete.id); // Assuming this function exists after AppContext update
+            // Corrected to use deleteVisionItem
+            deleteVisionItem(itemToDelete.id); 
           }
           setConfirmDeleteVisible(false);
           setItemToDelete(null);

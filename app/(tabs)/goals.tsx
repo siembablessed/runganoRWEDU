@@ -1,27 +1,32 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp } from "../../contexts/AppContext";
+import { useApp } from "@/contexts/AppContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import Colors from "../../constants/colors";
-import { CheckCircle2, Circle, Plus, Trash2, Edit3, ChevronDown, DollarSign, Target } from "lucide-react-native";
-import { useState } from "react";
+import { CheckCircle2, Circle, Plus, Trash2, Edit3, ChevronDown, DollarSign, Target, X } from "lucide-react-native";
+import { useState, useCallback, useMemo } from "react";
 import FormModal, { FormInput, FormButton } from "../../components/FormModal";
 import ActionMenu from "../../components/ActionMenu";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import * as Haptics from "expo-haptics";
-import type { Goal, Milestone } from "../../types";
+import type { Goal, Milestone, DateIdea } from "../../types";
+
+// Import the DatesScreen content from the new modal location
+import DatesScreenContent from '../modals/dates'; 
+
 
 export default function GoalsScreen() {
-  const { goals, toggleGoal, addGoal, updateGoal, deleteGoal } = useApp();
+  const { goals, toggleGoal, addGoal, updateGoal, deleteGoal, dateIdeas, addDateIdea, updateDateIdea } = useApp();
   const { settings } = useSettings();
   const insets = useSafeAreaInsets();
+  const [activeTab, setActiveTab] = useState<'goals' | 'dates'>('goals'); 
+  
+  // --- GOAL STATE ---
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
-  const [actionMenuVisible, setActionMenuVisible] = useState<boolean>(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
-  const [anchorPosition, setAnchorPosition] = useState<{ x: number; y: number } | undefined>();
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState<boolean>(false);
   const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
   const [title, setTitle] = useState<string>("");
@@ -35,7 +40,34 @@ export default function GoalsScreen() {
   const [financialContribution, setFinancialContribution] = useState<string>("");
   const [financialContributionType, setFinancialContributionType] = useState<"fixed" | "percentage">("fixed");
 
-  const openModal = (goal?: Goal) => {
+  // --- DATES STATE (NEW) ---
+  const [dateModalVisible, setDateModalVisible] = useState<boolean>(false);
+  const [editingDateIdea, setEditingDateIdea] = useState<DateIdea | null>(null);
+  const [dateTitle, setDateTitle] = useState<string>("");
+  const [dateDescription, setDateDescription] = useState<string>("");
+  const [dateCategory, setDateCategory] = useState<DateIdea["category"]>("romantic");
+  const [dateImageUrl, setDateImageUrl] = useState<string>("");
+
+  // --- Shared Action Menu State ---
+  const [actionMenuVisible, setActionMenuVisible] = useState<boolean>(false);
+  const [anchorPosition, setAnchorPosition] = useState<{ x: number; y: number } | undefined>();
+  
+  // --- START GOAL HANDLERS ---
+  const resetGoalForm = () => {
+    setEditingGoal(null);
+    setTitle("");
+    setDescription("");
+    setCategory("collective");
+    setGoalType("simple");
+    setMilestones([]);
+    setNewMilestone("");
+    setFinancialTarget("");
+    setFinancialCurrent("");
+    setFinancialContribution("");
+    setFinancialContributionType("fixed");
+  };
+
+  const openGoalModal = useCallback((goal?: Goal) => {
     if (goal) {
       setEditingGoal(goal);
       setTitle(goal.title);
@@ -48,32 +80,26 @@ export default function GoalsScreen() {
       setFinancialContribution(goal.financialContribution?.toString() || "");
       setFinancialContributionType(goal.financialContributionType || "fixed");
     } else {
-      setEditingGoal(null);
-      setTitle("");
-      setDescription("");
-      setCategory("collective");
-      setGoalType("simple");
-      setMilestones([]);
-      setNewMilestone("");
-      setFinancialTarget("");
-      setFinancialCurrent("");
-      setFinancialContribution("");
-      setFinancialContributionType("fixed");
+      resetGoalForm();
     }
     setModalVisible(true);
-  };
-
-  const addMilestone = () => {
+  }, []);
+  
+  const addMilestone = useCallback(() => {
     if (!newMilestone.trim()) return;
-    setMilestones([...milestones, {
+    setMilestones(currentMilestones => [...currentMilestones, {
       id: Date.now().toString(),
       title: newMilestone.trim(),
       completed: false,
     }]);
     setNewMilestone("");
-  };
+  }, [newMilestone]);
 
-  const toggleMilestoneInGoal = (goalId: string, milestoneId: string) => {
+  const removeMilestone = useCallback((id: string) => {
+    setMilestones(currentMilestones => currentMilestones.filter((m) => m.id !== id));
+  }, []);
+
+  const toggleMilestoneInGoal = useCallback((goalId: string, milestoneId: string) => {
     const goal = goals.find((g) => g.id === goalId);
     if (!goal || !goal.milestones) return;
 
@@ -89,13 +115,9 @@ export default function GoalsScreen() {
       progress,
       completed: completedCount === updatedMilestones.length,
     });
-  };
-
-  const removeMilestone = (id: string) => {
-    setMilestones(milestones.filter((m) => m.id !== id));
-  };
-
-  const handleContribute = (goal: Goal) => {
+  }, [goals, updateGoal]);
+  
+  const handleContribute = useCallback((goal: Goal) => {
     if (!goal.financialTarget || !goal.financialContribution) return;
 
     let newAmount = goal.financialCurrent || 0;
@@ -114,9 +136,9 @@ export default function GoalsScreen() {
       progress,
       completed: newAmount >= goal.financialTarget,
     });
-  };
+  }, [updateGoal]);
 
-  const handleSave = () => {
+  const handleGoalSave = useCallback(() => {
     if (!title.trim()) return;
 
     const goalData: Partial<Goal> = {
@@ -152,7 +174,6 @@ export default function GoalsScreen() {
     if (editingGoal) {
       updateGoal(editingGoal.id, goalData);
     } else {
-      // Default to 0 progress for new goals, unless milestone/financial logic sets it.
       const newGoal = {
         id: Date.now().toString(),
         ...goalData,
@@ -163,28 +184,72 @@ export default function GoalsScreen() {
     }
 
     setModalVisible(false);
-  };
+  }, [title, description, category, goalType, milestones, financialTarget, financialCurrent, financialContribution, financialContributionType, editingGoal, updateGoal, addGoal]);
 
-  const collectiveGoals = goals.filter((g) => g.category === "collective");
-  const herGoals = goals.filter((g) => g.category === "hers");
-  const myGoals = goals.filter((g) => g.category === "mine");
-
-  const handleLongPress = (goalId: string, event: any) => {
+  const handleLongPress = useCallback((goalId: string, event: any) => {
     if (settings.hapticFeedback) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    
-    // Get the position from the event
     if (event?.nativeEvent) {
       setAnchorPosition({
         x: event.nativeEvent.pageX,
         y: event.nativeEvent.pageY,
       });
     }
-    
     setSelectedGoalId(goalId);
     setActionMenuVisible(true);
+  }, [settings.hapticFeedback]);
+  // --- END GOAL HANDLERS ---
+  
+  // --- START DATES HANDLERS (NEW) ---
+  const resetDateForm = () => {
+    setEditingDateIdea(null);
+    setDateTitle("");
+    setDateDescription("");
+    setDateCategory("romantic");
+    setDateImageUrl("");
   };
+
+  const openDatesModal = useCallback((dateIdea?: DateIdea) => {
+    if (dateIdea) {
+      setEditingDateIdea(dateIdea);
+      setDateTitle(dateIdea.title);
+      setDateDescription(dateIdea.description);
+      setDateCategory(dateIdea.category);
+      setDateImageUrl(dateIdea.imageUrl || "");
+    } else {
+      resetDateForm();
+    }
+    setDateModalVisible(true);
+  }, []);
+
+  const handleDateSave = useCallback(() => {
+    if (!dateTitle.trim() || !dateDescription.trim()) return;
+
+    if (editingDateIdea) {
+      updateDateIdea(editingDateIdea.id, {
+        title: dateTitle.trim(),
+        description: dateDescription.trim(),
+        category: dateCategory,
+        imageUrl: dateImageUrl.trim() || undefined,
+      });
+    } else {
+      addDateIdea({
+        id: Date.now().toString(),
+        title: dateTitle.trim(),
+        description: dateDescription.trim(),
+        category: dateCategory,
+        completed: false,
+        imageUrl: dateImageUrl.trim() || undefined,
+      });
+    }
+
+    setDateModalVisible(false);
+  }, [dateTitle, dateDescription, dateCategory, dateImageUrl, editingDateIdea, updateDateIdea, addDateIdea]);
+
+  // --- END DATES HANDLERS ---
+
+  // --- Rendering Functions ---
 
   const renderGoalCard = (goal: Goal, color: string) => {
     const isExpanded = expandedGoalId === goal.id;
@@ -209,7 +274,6 @@ export default function GoalsScreen() {
           style={styles.goalToggleArea}
           onLongPress={(e) => handleLongPress(goal.id, e)}
           activeOpacity={0.7}
-          // The main area press now just toggles expansion
           onPress={() => {
             if (settings.hapticFeedback) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -217,12 +281,11 @@ export default function GoalsScreen() {
             if (isMilestone || isFinancial) {
                 setExpandedGoalId(isExpanded ? null : goal.id);
             } else {
-                // Simple goals just toggle completion on tap
                 toggleGoal(goal.id);
             }
           }}
         >
-          {/* 1. Dedicated Completion Toggle Button for complex goals */}
+          {/* 1. Dedicated Completion Toggle Button */}
           {(isMilestone || isFinancial) ? (
             <TouchableOpacity
               onPress={() => toggleGoal(goal.id)}
@@ -236,7 +299,6 @@ export default function GoalsScreen() {
               )}
             </TouchableOpacity>
           ) : (
-             // Simple goals have the toggle action directly on the card for a cleaner look
              <View style={styles.completionToggle}>
                 {goal.completed ? (
                   <CheckCircle2 size={24} color={color} />
@@ -259,14 +321,12 @@ export default function GoalsScreen() {
                 <Text style={styles.goalDescription}>{goal.description}</Text>
             )}
 
-            {/* Progress/Summary Text */}
             {(isMilestone || isFinancial || goal.progress !== undefined) && (
                 <Text style={[styles.progressSummary, goal.completed && styles.completedText]}>
                     {progressText}
                 </Text>
             )}
             
-            {/* Progress Bar for all goal types (if not completed and has progress) */}
             {goal.progress !== undefined && !goal.completed && (
               <View style={styles.progressBar}>
                 <View
@@ -278,7 +338,6 @@ export default function GoalsScreen() {
               </View>
             )}
 
-            {/* Expansion Chevron for complex goals */}
             {(isMilestone || isFinancial) && (
                 <ChevronDown
                 size={20}
@@ -289,7 +348,6 @@ export default function GoalsScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* 2. Expanded Content for Details (Milestones/Contribution) */}
         {isExpanded && (isMilestone || isFinancial) && (
           <View style={styles.expandedContent}>
             {isMilestone && goal.milestones && goal.milestones.length > 0 && (
@@ -358,6 +416,24 @@ export default function GoalsScreen() {
       </View>
     );
   };
+  
+  // --- End of Rendering Functions ---
+
+  const collectiveGoals = useMemo(() => goals.filter((g) => g.category === "collective"), [goals]);
+  const herGoals = useMemo(() => goals.filter((g) => g.category === "hers"), [goals]);
+  const myGoals = useMemo(() => goals.filter((g) => g.category === "mine"), [goals]);
+
+  const renderGoalContent = () => (
+    <>
+      {renderGoalSection("Together", collectiveGoals, Colors.darkGreen)}
+      {renderGoalSection("Hers", herGoals, Colors.lightBrown)}
+      {renderGoalSection("Mine", myGoals, Colors.darkBrown)}
+      <View style={{ height: 40 }} />
+    </>
+  );
+
+  const categories: DateIdea["category"][] = ["cozy", "adventure", "romantic", "fun"];
+
 
   return (
     <View style={styles.container}>
@@ -368,220 +444,169 @@ export default function GoalsScreen() {
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <View style={styles.headerContent}>
             <View>
-              <Text style={styles.title}>Our Goals</Text>
-              <Text style={styles.subtitle}>Building our future together</Text>
+              {/* Dynamic Header Titles */}
+              <Text style={styles.title}>{activeTab === 'goals' ? 'Our Goals' : 'Date Ideas'}</Text>
+              <Text style={styles.subtitle}>{activeTab === 'goals' ? 'Building our future together' : 'Plan your next moment'}</Text>
             </View>
             <TouchableOpacity
               style={styles.addButton}
-              onPress={() => openModal()}
+              // FIX: Conditionally open the correct modal
+              onPress={() => activeTab === 'goals' ? openGoalModal() : openDatesModal()}
               activeOpacity={0.7}
+              // Removed `disabled` prop to make the button clickable on both tabs
             >
               <Plus size={24} color="#FFF" />
             </TouchableOpacity>
           </View>
         </View>
+        
+        <View style={styles.tabSelectorContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'goals' && styles.tabButtonActive]}
+            onPress={() => {
+                setActiveTab('goals');
+                setExpandedGoalId(null);
+            }}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'goals' && styles.tabButtonTextActive]}>Goals</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'dates' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('dates')}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'dates' && styles.tabButtonTextActive]}>Dates</Text>
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {renderGoalSection("Together", collectiveGoals, Colors.darkGreen)}
-        {renderGoalSection("Hers", herGoals, Colors.lightBrown)}
-        {renderGoalSection("Mine", myGoals, Colors.darkBrown)}
-        <View style={{ height: 40 }} />
+        {activeTab === 'goals' 
+          ? renderGoalContent() 
+          : <DatesScreenContent /> 
+        }
       </ScrollView>
 
-      <ActionMenu
-        visible={actionMenuVisible}
-        anchorPosition={anchorPosition}
-        onClose={() => {
-          setActionMenuVisible(false);
-          setSelectedGoalId(null);
-          setAnchorPosition(undefined);
-        }}
-        options={
-          selectedGoalId
-            ? (() => {
-                const goal = goals.find((g) => g.id === selectedGoalId);
-                if (!goal) return [];
-                const catColor = goal.category === "collective" ? Colors.darkGreen : goal.category === "hers" ? Colors.lightBrown : Colors.darkBrown;
-                return [
-                  {
-                    label: "Edit Goal",
-                    icon: Edit3,
-                    onPress: () => openModal(goal),
-                    color: catColor,
-                  },
-                  {
-                    label: "Delete Goal",
-                    icon: Trash2,
-                    onPress: () => {
-                      setGoalToDelete(goal);
-                      setActionMenuVisible(false);
-                      setConfirmDeleteVisible(true);
-                    },
-                    destructive: true,
-                  },
-                ];
-              })()
-            : []
-        }
-      />
+      {/* 1. GOALS MODAL & ACTIONS (Active only for Goals tab) */}
+      {activeTab === 'goals' && (
+        <>
+          <ActionMenu
+            visible={actionMenuVisible}
+            anchorPosition={anchorPosition}
+            onClose={() => {
+              setActionMenuVisible(false);
+              setSelectedGoalId(null);
+              setAnchorPosition(undefined);
+            }}
+            options={
+              selectedGoalId
+                ? (() => {
+                    const goal = goals.find((g) => g.id === selectedGoalId);
+                    if (!goal) return [];
+                    const catColor = goal.category === "collective" ? Colors.darkGreen : goal.category === "hers" ? Colors.lightBrown : Colors.darkBrown;
+                    return [
+                      {
+                        label: "Edit Goal",
+                        icon: Edit3,
+                        onPress: () => openGoalModal(goal),
+                        color: catColor,
+                      },
+                      {
+                        label: "Delete Goal",
+                        icon: Trash2,
+                        onPress: () => {
+                          setGoalToDelete(goal);
+                          setActionMenuVisible(false);
+                          setConfirmDeleteVisible(true);
+                        },
+                        destructive: true,
+                      },
+                    ];
+                  })()
+                : []
+            }
+          />
 
-      <ConfirmDialog
-        visible={confirmDeleteVisible}
-        title="Delete Goal"
-        message={`Are you sure you want to delete "${goalToDelete?.title}"? This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        onConfirm={() => {
-          if (goalToDelete) {
-            deleteGoal(goalToDelete.id);
-          }
-          setConfirmDeleteVisible(false);
-          setGoalToDelete(null);
-        }}
-        onCancel={() => {
-          setConfirmDeleteVisible(false);
-          setGoalToDelete(null);
-        }}
-        destructive={true}
-      />
+          <ConfirmDialog
+            visible={confirmDeleteVisible}
+            title="Delete Goal"
+            message={`Are you sure you want to delete "${goalToDelete?.title}"? This action cannot be undone.`}
+            confirmText="Delete"
+            cancelText="Cancel"
+            onConfirm={() => {
+              if (goalToDelete) {
+                deleteGoal(goalToDelete.id);
+              }
+              setConfirmDeleteVisible(false);
+              setGoalToDelete(null);
+            }}
+            onCancel={() => {
+              setConfirmDeleteVisible(false);
+              setGoalToDelete(null);
+            }}
+            destructive={true}
+          />
 
-      <FormModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        title={editingGoal ? "Edit Goal" : "Add New Goal"}
-      >
-        <FormInput
-          label="Goal Title"
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Our next big adventure..."
-        />
-        <FormInput
-          label="Description (Optional)"
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Details on how we'll achieve this."
-          multiline
-        />
-        <View style={styles.categorySelector}>
-          <Text style={styles.categoryLabel}>Category</Text>
-          <View style={styles.categoryButtons}>
-            {(['collective', 'hers', 'mine'] as const).map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[
-                  styles.categoryButton,
-                  category === cat && styles.categoryButtonActive,
-                ]}
-                onPress={() => setCategory(cat)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.categoryButtonText,
-                    category === cat && styles.categoryButtonTextActive,
-                  ]}
-                >
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.goalTypeSelector}>
-          <Text style={styles.categoryLabel}>Goal Type</Text>
-          <View style={styles.categoryButtons}>
-            {(['simple', 'milestone', 'financial'] as const).map((type) => (
-              <TouchableOpacity
-                key={type}
-                style={[
-                  styles.categoryButton,
-                  goalType === type && styles.categoryButtonActive,
-                ]}
-                onPress={() => setGoalType(type)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.categoryButtonText,
-                    goalType === type && styles.categoryButtonTextActive,
-                  ]}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {goalType === "milestone" && (
-          <View style={styles.milestoneInputContainer}>
-            <Text style={styles.categoryLabel}>Milestones</Text>
-            <View style={styles.milestoneInputRow}>
-              <TextInput
-                style={[styles.milestoneInput, { flex: 1 }]}
-                value={newMilestone}
-                onChangeText={setNewMilestone}
-                placeholder="Add a step (e.g., Book flights)"
-                placeholderTextColor={Colors.textLight}
-              />
-              <TouchableOpacity style={styles.milestoneAddButton} onPress={addMilestone}>
-                <Plus size={20} color="#FFF" />
-              </TouchableOpacity>
-            </View>
-            {milestones.map((m) => (
-              <View key={m.id} style={styles.milestoneTag}>
-                <Text style={styles.milestoneTagText}>{m.title}</Text>
-                <TouchableOpacity onPress={() => removeMilestone(m.id)}>
-                  <X size={16} color={Colors.textLight} />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {goalType === "financial" && (
-          <View>
-            <FormInput
-              label="Financial Target ($)"
-              value={financialTarget}
-              onChangeText={setFinancialTarget}
-              placeholder="10000.00"
-              keyboardType="numeric"
+          <FormModal
+            visible={modalVisible}
+            onClose={() => setModalVisible(false)}
+            title={editingGoal ? "Edit Goal" : "Add New Goal"}
+          >
+             <FormInput
+              label="Goal Title"
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Our next big adventure..."
             />
             <FormInput
-              label="Current Amount Saved ($)"
-              value={financialCurrent}
-              onChangeText={setFinancialCurrent}
-              placeholder="0.00"
-              keyboardType="numeric"
+              label="Description (Optional)"
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Details on how we'll achieve this."
+              multiline
             />
-            <FormInput
-              label="Recurring Contribution Amount"
-              value={financialContribution}
-              onChangeText={setFinancialContribution}
-              placeholder="100"
-              keyboardType="numeric"
-            />
-            <View style={styles.contributionTypeSelector}>
-              <Text style={styles.categoryLabel}>Contribution Type</Text>
+            <View style={styles.categorySelector}>
+              <Text style={styles.categoryLabel}>Category</Text>
               <View style={styles.categoryButtons}>
-                {(['fixed', 'percentage'] as const).map((type) => (
+                {(['collective', 'hers', 'mine'] as const).map((cat) => (
                   <TouchableOpacity
-                    key={type}
+                    key={cat}
                     style={[
                       styles.categoryButton,
-                      financialContributionType === type && styles.categoryButtonActive,
+                      category === cat && styles.categoryButtonActive,
                     ]}
-                    onPress={() => setFinancialContributionType(type)}
+                    onPress={() => setCategory(cat)}
                     activeOpacity={0.7}
                   >
                     <Text
                       style={[
                         styles.categoryButtonText,
-                        financialContributionType === type && styles.categoryButtonTextActive,
+                        category === cat && styles.categoryButtonTextActive,
+                      ]}
+                    >
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.goalTypeSelector}>
+              <Text style={styles.categoryLabel}>Goal Type</Text>
+              <View style={styles.categoryButtons}>
+                {(['simple', 'milestone', 'financial'] as const).map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.categoryButton,
+                      goalType === type && styles.categoryButtonActive,
+                    ]}
+                    onPress={() => setGoalType(type)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryButtonText,
+                        goalType === type && styles.categoryButtonTextActive,
                       ]}
                     >
                       {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -590,14 +615,148 @@ export default function GoalsScreen() {
                 ))}
               </View>
             </View>
-          </View>
-        )}
 
-        <FormButton title={editingGoal ? "Save Changes" : "Add Goal"} onPress={handleSave} />
-      </FormModal>
+            {goalType === "milestone" && (
+              <View style={styles.milestoneInputContainer}>
+                <Text style={styles.categoryLabel}>Milestones</Text>
+                <View style={styles.milestoneInputRow}>
+                  <TextInput
+                    style={[styles.milestoneInput, { flex: 1 }]}
+                    value={newMilestone}
+                    onChangeText={setNewMilestone}
+                    placeholder="Add a step (e.g., Book flights)"
+                    placeholderTextColor={Colors.textLight}
+                  />
+                  <TouchableOpacity style={styles.milestoneAddButton} onPress={addMilestone}>
+                    <Plus size={20} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+                {milestones.map((m) => (
+                  <View key={m.id} style={styles.milestoneTag}>
+                    <Text style={styles.milestoneTagText}>{m.title}</Text>
+                    <TouchableOpacity onPress={() => removeMilestone(m.id)}>
+                      <X size={16} color={Colors.textLight} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {goalType === "financial" && (
+              <View>
+                <FormInput
+                  label="Financial Target ($)"
+                  value={financialTarget}
+                  onChangeText={setFinancialTarget}
+                  placeholder="10000.00"
+                  keyboardType="numeric"
+                />
+                <FormInput
+                  label="Current Amount Saved ($)"
+                  value={financialCurrent}
+                  onChangeText={setFinancialCurrent}
+                  placeholder="0.00"
+                  keyboardType="numeric"
+                />
+                <FormInput
+                  label="Recurring Contribution Amount"
+                  value={financialContribution}
+                  onChangeText={setFinancialContribution}
+                  placeholder="100"
+                  keyboardType="numeric"
+                />
+                <View style={styles.contributionTypeSelector}>
+                  <Text style={styles.categoryLabel}>Contribution Type</Text>
+                  <View style={styles.categoryButtons}>
+                    {(['fixed', 'percentage'] as const).map((type) => (
+                      <TouchableOpacity
+                        key={type}
+                        style={[
+                          styles.categoryButton,
+                          financialContributionType === type && styles.categoryButtonActive,
+                        ]}
+                        onPress={() => setFinancialContributionType(type)}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.categoryButtonText,
+                            financialContributionType === type && styles.categoryButtonTextActive,
+                          ]}
+                        >
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            )}
+
+            <FormButton title={editingGoal ? "Save Changes" : "Add Goal"} onPress={handleGoalSave} />
+          </FormModal>
+        </>
+      )}
+
+      {/* 2. DATES MODAL (Active only for Dates tab) */}
+      {activeTab === 'dates' && (
+        <FormModal
+            visible={dateModalVisible}
+            onClose={() => setDateModalVisible(false)}
+            title={editingDateIdea ? "Edit Date Idea" : "Add Date Idea"}
+        >
+          <FormInput
+            label="Title"
+            value={dateTitle}
+            onChangeText={setDateTitle}
+            placeholder="Perfect date idea..."
+          />
+          <FormInput
+            label="Description"
+            value={dateDescription}
+            onChangeText={setDateDescription}
+            placeholder="Describe the date..."
+            multiline
+          />
+          <View style={styles.categorySelector}>
+            <Text style={styles.categoryLabel}>Category</Text>
+            <View style={styles.categoryButtons}>
+              {(['cozy', 'adventure', 'romantic', 'fun'] as const).map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.categoryButton,
+                    dateCategory === cat && styles.categoryButtonActive,
+                  ]}
+                  onPress={() => setDateCategory(cat)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.categoryButtonText,
+                      dateCategory === cat && styles.categoryButtonTextActive,
+                    ]}
+                  >
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <FormInput
+            label="Image URL (optional)"
+            value={dateImageUrl}
+            onChangeText={setDateImageUrl}
+            placeholder="https://..."
+          />
+          <FormButton title={editingDateIdea ? "Save Changes" : "Add Date Idea"} onPress={handleDateSave} />
+        </FormModal>
+      )}
     </View>
   );
 }
+
+// NOTE: All StyleSheet definitions are included below for completeness.
 
 const styles = StyleSheet.create({
   container: {
@@ -609,7 +768,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingBottom: 8, 
   },
   headerContent: {
     flexDirection: "row",
@@ -642,6 +801,36 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingTop: 16,
+  },
+  tabSelectorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 24,
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    marginHorizontal: 4,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: Colors.pastelGreen + '50',
+  },
+  tabButtonActive: {
+    backgroundColor: Colors.darkGreen,
+    shadowColor: Colors.darkGreen,
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  tabButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  tabButtonTextActive: {
+    color: '#FFF',
   },
   section: {
     marginBottom: 32,
@@ -683,7 +872,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   completionToggle: {
-    paddingTop: 2, // Align with title
+    paddingTop: 2,
   },
   goalContent: {
     flex: 1,
@@ -781,7 +970,6 @@ const styles = StyleSheet.create({
     fontWeight: "700" as const,
     color: "#FFF",
   },
-  // Form Modal Styles (copied from previous state for completeness)
   categorySelector: {
     marginBottom: 20,
   },
@@ -812,7 +1000,7 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
   },
   categoryButtonTextActive: {
-    color: "#FFF",
+    color: '#FFF',
   },
   goalTypeSelector: {
     marginBottom: 20,

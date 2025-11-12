@@ -162,6 +162,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     loadData();
   }, [loadData]);
 
+  // --- MEMORY CRUD ---
+
   const addMemory = useCallback((memory: Memory) => {
     const updated = [memory, ...memories];
     setMemories(updated);
@@ -187,11 +189,29 @@ export const [AppProvider, useApp] = createContextHook(() => {
     saveData({ memories: newMemories });
   }, [saveData]);
 
+  // --- VISION BOARD CRUD (UPDATED) ---
+
   const addVisionItem = useCallback((item: VisionBoardItem) => {
-    const updated = [...visionBoard, item];
+    const updated = [item, ...visionBoard];
     setVisionBoard(updated);
     saveData({ visionBoard: updated });
   }, [visionBoard, saveData]);
+
+  const deleteVisionItem = useCallback((itemId: string) => {
+    const updated = visionBoard.filter((item) => item.id !== itemId);
+    setVisionBoard(updated);
+    saveData({ visionBoard: updated });
+  }, [visionBoard, saveData]);
+  
+  const updateVisionItem = useCallback((itemId: string, updates: Partial<VisionBoardItem>) => {
+    const updated = visionBoard.map((item) =>
+      item.id === itemId ? { ...item, ...updates } : item
+    );
+    setVisionBoard(updated);
+    saveData({ visionBoard: updated });
+  }, [visionBoard, saveData]);
+
+  // --- GOAL CRUD ---
 
   const toggleGoal = useCallback((goalId: string) => {
     const updated = goals.map((goal) =>
@@ -220,6 +240,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
     setGoals(updated);
     saveData({ goals: updated });
   }, [goals, saveData]);
+  
+  const reorderGoals = useCallback((newGoals: Goal[]) => {
+    setGoals(newGoals);
+    saveData({ goals: newGoals });
+  }, [saveData]);
+
+  // --- DATE IDEA CRUD ---
 
   const toggleDateIdea = useCallback((ideaId: string) => {
     const updated = dateIdeas.map((idea) =>
@@ -254,6 +281,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     saveData({ dateIdeas: newDateIdeas });
   }, [saveData]);
 
+  // --- PLACE (TRAVEL) CRUD ---
+
   const togglePlace = useCallback((placeId: string) => {
     const updated = places.map((place) =>
       place.id === placeId ? { ...place, visited: !place.visited } : place
@@ -287,11 +316,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     saveData({ places: newPlaces });
   }, [saveData]);
 
-  const reorderGoals = useCallback((newGoals: Goal[]) => {
-    setGoals(newGoals);
-    saveData({ goals: newGoals });
-  }, [saveData]);
-
   return useMemo(
     () => ({
       memories,
@@ -305,6 +329,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       updateMemory,
       reorderMemories,
       addVisionItem,
+      deleteVisionItem, // NEW
+      updateVisionItem, // NEW
       toggleGoal,
       addGoal,
       updateGoal,
@@ -333,6 +359,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       updateMemory,
       reorderMemories,
       addVisionItem,
+      deleteVisionItem, // NEW
+      updateVisionItem, // NEW
       toggleGoal,
       addGoal,
       updateGoal,

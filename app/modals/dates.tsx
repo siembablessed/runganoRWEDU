@@ -1,11 +1,10 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from "react-native";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp } from "../../contexts/AppContext";
+import { useApp } from "@/contexts/AppContext"; // Using alias for consistency
 import { useSettings } from "../../contexts/SettingsContext";
 import Colors from "../../constants/colors";
-import { CheckCircle2, Circle, Home as HomeIcon, Mountain, Heart as HeartIcon, Smile, Plus, Trash2, Edit3, ImagePlus } from "lucide-react-native";
+import { CheckCircle2, Circle, Home as HomeIcon, Mountain, Heart as HeartIcon, Smile, Plus, Trash2, Edit3 } from "lucide-react-native";
 import type { DateIdea } from "../../types";
 import { useState } from "react";
 import FormModal, { FormInput, FormButton } from "../../components/FormModal";
@@ -27,7 +26,8 @@ const categoryColors = {
   fun: Colors.darkBrown,
 };
 
-export default function DatesScreen() {
+// NOTE: This component no longer accepts hideHeader or renders its own header/gradient/addButton
+export default function DatesScreenContent() {
   const { dateIdeas, toggleDateIdea, addDateIdea, deleteDateIdea, updateDateIdea } = useApp();
   const { settings } = useSettings();
   const insets = useSafeAreaInsets();
@@ -43,6 +43,7 @@ export default function DatesScreen() {
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState<boolean>(false);
   const [dateIdeaToDelete, setDateIdeaToDelete] = useState<DateIdea | null>(null);
 
+  // Re-define internal functions needed for modals and actions
   const openModal = (dateIdea?: DateIdea) => {
     if (dateIdea) {
       setEditingDateIdea(dateIdea);
@@ -108,30 +109,10 @@ export default function DatesScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[Colors.pastelGreen, Colors.softWhite]}
-        style={styles.headerGradient}
-      >
-        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.title}>Date Ideas</Text>
-              <Text style={styles.subtitle}>
-                {dateIdeas.filter((d) => d.completed).length} dates completed
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => openModal()}
-              activeOpacity={0.7}
-            >
-              <Plus size={24} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      
+      {/* NO HEADER RENDERED HERE. Only the content is visible. */}
+      {/* The ScrollView is also removed, and content is wrapped in a View */}
+      <View style={styles.content}> 
         {categories.map((category) => {
           const categoryDates = dateIdeas.filter((d) => d.category === category);
           if (categoryDates.length === 0) return null;
@@ -157,14 +138,11 @@ export default function DatesScreen() {
                 <View key={dateIdea.id} style={styles.dateCard}>
                   <TouchableOpacity
                     style={styles.dateContent}
-                    onPress={() => {
-                      // Navigate to a detail screen if one existed, but for now, no-op or just the action menu
-                    }}
+                    onPress={() => {}}
                     onLongPress={(e) => handleLongPress(dateIdea.id, e)}
                     activeOpacity={0.9}
                   >
                     <View style={styles.cardLeft}>
-                        {/* New: Small Image/Icon Indicator */}
                         {dateIdea.imageUrl ? (
                             <Image 
                                 source={{ uri: dateIdea.imageUrl }}
@@ -187,7 +165,6 @@ export default function DatesScreen() {
                         </Text>
                     </View>
 
-                    {/* New: Dedicated Toggle Button */}
                     <TouchableOpacity
                         style={styles.cardRight}
                         onPress={() => {
@@ -212,8 +189,9 @@ export default function DatesScreen() {
           );
         })}
         <View style={{ height: 40 }} />
-      </ScrollView>
+      </View>
 
+      {/* Action Menu and Modals remain here, controlled locally by Dates content */}
       <ActionMenu
         visible={actionMenuVisible}
         anchorPosition={anchorPosition}
@@ -330,45 +308,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.softWhite,
+    // When standalone, this takes full height, but when embedded, the parent ScrollView wraps it
   },
-  headerGradient: {
-    paddingTop: 0,
-  },
-  header: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.textLight,
-  },
-  addButton: {
-    backgroundColor: Colors.darkGreen,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
+  // Removed headerGradient and header styles
   content: {
     flex: 1,
-    paddingTop: 16,
+    paddingTop: 0, // Ensure no extra top padding is applied here
   },
   section: {
     marginBottom: 32,
@@ -407,9 +352,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-    // Removed height-related styles to make it compact
   },
-  // Removed dateImageContainer, dateImage, imageOverlay styles
   dateContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -437,10 +380,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardRight: {
-    padding: 8, // Make the toggle target larger
-  },
-  dateHeader: {
-    // Replaced by cardCenter structure
+    padding: 8,
   },
   dateTitle: {
     fontSize: 17,
