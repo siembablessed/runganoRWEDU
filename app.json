@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "LoveNest Memories",
-    "slug": "lovenest-memories",
+    "name": "Rungano Rwedu",
+    "slug": "rungano-rwedu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.lovenest-memories"
+      "bundleIdentifier": "com.runganorwedu.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.lovenest_memories"
+      "package": "com.runganorwedu.app"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -39,6 +39,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://rork.com/"
+      },
+      "eas": {
+        "projectId": "387f21c2-4d4d-4fbe-b76e-26806d58a900"
+      }
     }
   }
 }

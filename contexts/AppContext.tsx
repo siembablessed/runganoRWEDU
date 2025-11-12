@@ -1,13 +1,12 @@
 import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import type { Memory, Goal, DateIdea, Place } from "../types"; // REMOVED VisionBoardItem import
+import type { Memory, Goal, DateIdea, Place } from "../types"; 
 
 const STORAGE_KEY = "couple_app_data";
 
 interface AppData {
   memories: Memory[];
-  // REMOVED: visionBoard: VisionBoardItem[];
   goals: Goal[];
   dateIdeas: DateIdea[];
   places: Place[];
@@ -30,7 +29,6 @@ const initialData: AppData = {
       description: "Perfect evening together",
     },
   ],
-  // REMOVED: visionBoard initial data
   goals: [
     {
       id: "1",
@@ -104,12 +102,14 @@ const initialData: AppData = {
 };
 
 export const [AppProvider, useApp] = createContextHook(() => {
+  // --- 1. DEFINE ALL STATE VARIABLES FIRST (USESTATE) ---
   const [memories, setMemories] = useState<Memory[]>(initialData.memories);
-  // REMOVED: visionBoard state
   const [goals, setGoals] = useState<Goal[]>(initialData.goals);
   const [dateIdeas, setDateIdeas] = useState<DateIdea[]>(initialData.dateIdeas);
   const [places, setPlaces] = useState<Place[]>(initialData.places);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // --- 2. THEN DEFINE ALL HANDLER FUNCTIONS (USECALLBACK / USEEFFECT) ---
 
   const loadData = useCallback(async () => {
     try {
@@ -117,7 +117,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
       if (stored) {
         const data = JSON.parse(stored);
         setMemories(data.memories || initialData.memories);
-        // REMOVED: visionBoard load logic
         setGoals(data.goals || initialData.goals);
         setDateIdeas(data.dateIdeas || initialData.dateIdeas);
         setPlaces(data.places || initialData.places);
@@ -133,7 +132,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     try {
       const currentData = {
         memories,
-        // REMOVED: visionBoard save logic
         goals,
         dateIdeas,
         places,
@@ -143,7 +141,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } catch (error) {
       console.log("Error saving data:", error);
     }
-  }, [memories, goals, dateIdeas, places]); // REMOVED visionBoard dependency
+  }, [memories, goals, dateIdeas, places]);
 
   useEffect(() => {
     loadData();
@@ -175,9 +173,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     setMemories(newMemories);
     saveData({ memories: newMemories });
   }, [saveData]);
-
-  // --- VISION BOARD CRUD (REMOVED) ---
-  // Removed addVisionItem, deleteVisionItem, updateVisionItem functions
 
   // --- GOAL CRUD ---
 
@@ -284,10 +279,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
     saveData({ places: newPlaces });
   }, [saveData]);
 
+  // --- 3. EXPORT VIA useMemo ---
   return useMemo(
     () => ({
       memories,
-      // REMOVED: visionBoard
       goals,
       dateIdeas,
       places,
@@ -296,7 +291,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
       deleteMemory,
       updateMemory,
       reorderMemories,
-      // REMOVED: visionBoard handlers
       toggleGoal,
       addGoal,
       updateGoal,
@@ -315,7 +309,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }),
     [
       memories,
-      // REMOVED: visionBoard
       goals,
       dateIdeas,
       places,
@@ -324,7 +317,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
       deleteMemory,
       updateMemory,
       reorderMemories,
-      // REMOVED: visionBoard handlers
       toggleGoal,
       addGoal,
       updateGoal,
