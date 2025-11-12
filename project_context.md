@@ -20,13 +20,15 @@ This file contains the directory structure and the contents of important project
 │   ├── **app/**
 │   │   ├── _layout.tsx
 │   │   ├── **(tabs)/**
-│   │   │   ├── dates.tsx
 │   │   │   ├── goals.tsx
 │   │   │   ├── index.tsx
 │   │   │   ├── memories.tsx
 │   │   │   ├── settings.tsx
 │   │   │   ├── travel.tsx
 │   │   │   ├── _layout.tsx
+│   │   ├── **modals/**
+│   │   │   ├── dates.tsx
+│   │   │   ├── vision.tsx
 │   ├── **assets/**
 │   │   ├── **images/**
 │   ├── **components/**
@@ -853,499 +855,38 @@ export default function RootLayout() {
 
 ```
 
-### File: `app\(tabs)\dates.tsx`
-
-```tsx
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from "react-native";
-import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp } from "../../contexts/AppContext";
-import { useSettings } from "../../contexts/SettingsContext";
-import Colors from "../../constants/colors";
-import { CheckCircle2, Circle, Home as HomeIcon, Mountain, Heart as HeartIcon, Smile, Plus, Trash2, Edit3 } from "lucide-react-native";
-import type { DateIdea } from "../../types";
-import { useState } from "react";
-import FormModal, { FormInput, FormButton } from "../../components/FormModal";
-import ActionMenu from "../../components/ActionMenu";
-import ConfirmDialog from "../../components/ConfirmDialog";
-import * as Haptics from "expo-haptics";
-
-const categoryIcons = {
-  cozy: HomeIcon,
-  adventure: Mountain,
-  romantic: HeartIcon,
-  fun: Smile,
-};
-
-const categoryColors = {
-  cozy: Colors.lightBrown,
-  adventure: Colors.darkGreen,
-  romantic: Colors.pastelGreen,
-  fun: Colors.darkBrown,
-};
-
-export default function DatesScreen() {
-  const { dateIdeas, toggleDateIdea, addDateIdea, deleteDateIdea, updateDateIdea } = useApp();
-  const { settings } = useSettings();
-  const insets = useSafeAreaInsets();
-  const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [editingDateIdea, setEditingDateIdea] = useState<DateIdea | null>(null);
-  const [title, setTitle] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
-  const [category, setCategory] = useState<DateIdea["category"]>("romantic");
-  const [imageUrl, setImageUrl] = useState<string>("");
-  const [actionMenuVisible, setActionMenuVisible] = useState<boolean>(false);
-  const [selectedDateIdeaId, setSelectedDateIdeaId] = useState<string | null>(null);
-  const [anchorPosition, setAnchorPosition] = useState<{ x: number; y: number } | undefined>();
-  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState<boolean>(false);
-  const [dateIdeaToDelete, setDateIdeaToDelete] = useState<DateIdea | null>(null);
-
-  const openModal = (dateIdea?: DateIdea) => {
-    if (dateIdea) {
-      setEditingDateIdea(dateIdea);
-      setTitle(dateIdea.title);
-      setDescription(dateIdea.description);
-      setCategory(dateIdea.category);
-      setImageUrl(dateIdea.imageUrl || "");
-    } else {
-      setEditingDateIdea(null);
-      setTitle("");
-      setDescription("");
-      setCategory("romantic");
-      setImageUrl("");
-    }
-    setModalVisible(true);
-  };
-
-  const handleSave = () => {
-    if (!title.trim() || !description.trim()) return;
-
-    if (editingDateIdea) {
-      updateDateIdea(editingDateIdea.id, {
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        imageUrl: imageUrl.trim() || undefined,
-      });
-    } else {
-      addDateIdea({
-        id: Date.now().toString(),
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        completed: false,
-        imageUrl: imageUrl.trim() || undefined,
-      });
-    }
-
-    setTitle("");
-    setDescription("");
-    setCategory("romantic");
-    setImageUrl("");
-    setModalVisible(false);
-  };
-
-  const handleLongPress = (dateIdeaId: string, event: any) => {
-    if (settings.hapticFeedback) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    
-    if (event?.nativeEvent) {
-      setAnchorPosition({
-        x: event.nativeEvent.pageX,
-        y: event.nativeEvent.pageY,
-      });
-    }
-    
-    setSelectedDateIdeaId(dateIdeaId);
-    setActionMenuVisible(true);
-  };
-
-  const categories: DateIdea["category"][] = ["cozy", "adventure", "romantic", "fun"];
-
-  return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={[Colors.pastelGreen, Colors.softWhite]}
-        style={styles.headerGradient}
-      >
-        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.title}>Date Ideas</Text>
-              <Text style={styles.subtitle}>
-                {dateIdeas.filter((d) => d.completed).length} dates completed
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => openModal()}
-              activeOpacity={0.7}
-            >
-              <Plus size={24} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {categories.map((category) => {
-          const categoryDates = dateIdeas.filter((d) => d.category === category);
-          if (categoryDates.length === 0) return null;
-
-          const IconComponent = categoryIcons[category];
-          const color = categoryColors[category];
-
-          return (
-            <View key={category} style={styles.section}>
-              <View style={[styles.categoryHeader, { borderLeftColor: color }]}>
-                <View style={styles.categoryTitleRow}>
-                  <IconComponent size={20} color={color} />
-                  <Text style={styles.categoryTitle}>
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                  </Text>
-                </View>
-              </View>
-
-              {categoryDates.map((dateIdea) => (
-                <View key={dateIdea.id} style={styles.dateCard}>
-                  {dateIdea.imageUrl && (
-                    <View style={styles.dateImageContainer}>
-                      <Image
-                        source={{ uri: dateIdea.imageUrl }}
-                        style={styles.dateImage}
-                        contentFit="cover"
-                      />
-                      <LinearGradient
-                        colors={["transparent", "rgba(0,0,0,0.3)"]}
-                        style={styles.imageOverlay}
-                      />
-                    </View>
-                  )}
-                  <TouchableOpacity
-                    style={styles.dateContent}
-                    onPress={() => {
-                      if (settings.hapticFeedback) {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }
-                      toggleDateIdea(dateIdea.id);
-                    }}
-                    onLongPress={(e) => handleLongPress(dateIdea.id, e)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.dateHeader}>
-                      <Text style={[styles.dateTitle, dateIdea.completed && styles.completedText]}>
-                        {dateIdea.title}
-                      </Text>
-                      {dateIdea.completed ? (
-                        <CheckCircle2 size={24} color={color} />
-                      ) : (
-                        <Circle size={24} color={Colors.textLight} />
-                      )}
-                    </View>
-                    <Text style={styles.dateDescription}>{dateIdea.description}</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          );
-        })}
-      </ScrollView>
-
-      <ActionMenu
-        visible={actionMenuVisible}
-        anchorPosition={anchorPosition}
-        onClose={() => {
-          setActionMenuVisible(false);
-          setSelectedDateIdeaId(null);
-          setAnchorPosition(undefined);
-        }}
-        options={
-          selectedDateIdeaId
-            ? (() => {
-                const dateIdea = dateIdeas.find((d) => d.id === selectedDateIdeaId);
-                if (!dateIdea) return [];
-                const catColor = categoryColors[dateIdea.category];
-                return [
-                  {
-                    label: "Edit",
-                    icon: Edit3,
-                    onPress: () => openModal(dateIdea),
-                    color: catColor,
-                  },
-                  {
-                    label: "Delete",
-                    icon: Trash2,
-                    onPress: () => {
-                      setDateIdeaToDelete(dateIdea);
-                      setActionMenuVisible(false);
-                      setConfirmDeleteVisible(true);
-                    },
-                    destructive: true,
-                  },
-                ];
-              })()
-            : []
-        }
-      />
-
-      <ConfirmDialog
-        visible={confirmDeleteVisible}
-        title="Delete Date Idea"
-        message={`Are you sure you want to delete "${dateIdeaToDelete?.title}"? This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        onConfirm={() => {
-          if (dateIdeaToDelete) {
-            deleteDateIdea(dateIdeaToDelete.id);
-          }
-          setConfirmDeleteVisible(false);
-          setDateIdeaToDelete(null);
-        }}
-        onCancel={() => {
-          setConfirmDeleteVisible(false);
-          setDateIdeaToDelete(null);
-        }}
-        destructive={true}
-      />
-
-      <FormModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        title={editingDateIdea ? "Edit Date Idea" : "Add Date Idea"}
-      >
-        <FormInput
-          label="Title"
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Perfect date idea..."
-        />
-        <FormInput
-          label="Description"
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Describe the date..."
-          multiline
-        />
-        <View style={styles.categorySelector}>
-          <Text style={styles.categoryLabel}>Category</Text>
-          <View style={styles.categoryButtons}>
-            {(['cozy', 'adventure', 'romantic', 'fun'] as const).map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[
-                  styles.categoryButton,
-                  category === cat && styles.categoryButtonActive,
-                ]}
-                onPress={() => setCategory(cat)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.categoryButtonText,
-                    category === cat && styles.categoryButtonTextActive,
-                  ]}
-                >
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-        <FormInput
-          label="Image URL (optional)"
-          value={imageUrl}
-          onChangeText={setImageUrl}
-          placeholder="https://..."
-        />
-        <FormButton title={editingDateIdea ? "Save Changes" : "Add Date Idea"} onPress={handleSave} />
-      </FormModal>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.softWhite,
-  },
-  headerGradient: {
-    paddingTop: 0,
-  },
-  header: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.textLight,
-  },
-  addButton: {
-    backgroundColor: Colors.darkGreen,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  content: {
-    flex: 1,
-    paddingTop: 16,
-  },
-  section: {
-    marginBottom: 32,
-    paddingHorizontal: 24,
-  },
-  categoryHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    paddingLeft: 16,
-    borderLeftWidth: 4,
-  },
-  categoryTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  categoryTitle: {
-    fontSize: 22,
-    fontWeight: "600" as const,
-    color: Colors.text,
-  },
-  dateCard: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 20,
-    marginBottom: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  dateImageContainer: {
-    width: "100%",
-    height: 160,
-    position: "relative",
-  },
-  dateImage: {
-    width: "100%",
-    height: "100%",
-  },
-  imageOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-  },
-  dateContent: {
-    padding: 16,
-  },
-  dateHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 8,
-    gap: 12,
-  },
-  dateTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: "600" as const,
-    color: Colors.text,
-  },
-  completedText: {
-    textDecorationLine: "line-through",
-    color: Colors.textLight,
-  },
-  dateDescription: {
-    fontSize: 15,
-    color: Colors.textLight,
-    lineHeight: 22,
-  },
-  categorySelector: {
-    marginBottom: 20,
-  },
-  categoryLabel: {
-    fontSize: 15,
-    fontWeight: "600" as const,
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  categoryButtons: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  categoryButton: {
-    flex: 1,
-    minWidth: "45%",
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: Colors.border,
-    alignItems: "center",
-  },
-  categoryButtonActive: {
-    backgroundColor: Colors.darkGreen,
-  },
-  categoryButtonText: {
-    fontSize: 14,
-    fontWeight: "600" as const,
-    color: Colors.textLight,
-  },
-  categoryButtonTextActive: {
-    color: "#FFF",
-  },
-});
-
-```
-
 ### File: `app\(tabs)\goals.tsx`
 
 ```tsx
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp } from "../../contexts/AppContext";
+import { useApp } from "@/contexts/AppContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import Colors from "../../constants/colors";
-import { CheckCircle2, Circle, Plus, Trash2, Edit3, ChevronDown, DollarSign, Target } from "lucide-react-native";
-import { useState } from "react";
+import { CheckCircle2, Circle, Plus, Trash2, Edit3, ChevronDown, DollarSign, Target, X } from "lucide-react-native";
+import { useState, useCallback, useMemo } from "react";
 import FormModal, { FormInput, FormButton } from "../../components/FormModal";
 import ActionMenu from "../../components/ActionMenu";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import * as Haptics from "expo-haptics";
-import type { Goal, Milestone } from "../../types";
+import type { Goal, Milestone, DateIdea } from "../../types";
+
+// Import the DatesScreen content from the new modal location
+import DatesScreenContent from '../modals/dates'; 
+
 
 export default function GoalsScreen() {
-  const { goals, toggleGoal, addGoal, updateGoal, deleteGoal } = useApp();
+  const { goals, toggleGoal, addGoal, updateGoal, deleteGoal, dateIdeas, addDateIdea, updateDateIdea } = useApp();
   const { settings } = useSettings();
   const insets = useSafeAreaInsets();
+  const [activeTab, setActiveTab] = useState<'goals' | 'dates'>('goals'); 
+  
+  // --- GOAL STATE ---
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
-  const [actionMenuVisible, setActionMenuVisible] = useState<boolean>(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
-  const [anchorPosition, setAnchorPosition] = useState<{ x: number; y: number } | undefined>();
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState<boolean>(false);
   const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
   const [title, setTitle] = useState<string>("");
@@ -1359,7 +900,34 @@ export default function GoalsScreen() {
   const [financialContribution, setFinancialContribution] = useState<string>("");
   const [financialContributionType, setFinancialContributionType] = useState<"fixed" | "percentage">("fixed");
 
-  const openModal = (goal?: Goal) => {
+  // --- DATES STATE ---
+  const [dateModalVisible, setDateModalVisible] = useState<boolean>(false);
+  const [editingDateIdea, setEditingDateIdea] = useState<DateIdea | null>(null);
+  const [dateTitle, setDateTitle] = useState<string>("");
+  const [dateDescription, setDateDescription] = useState<string>("");
+  const [dateCategory, setDateCategory] = useState<DateIdea["category"]>("romantic");
+  const [dateImageUrl, setDateImageUrl] = useState<string>("");
+
+  // --- Shared Action Menu State ---
+  const [actionMenuVisible, setActionMenuVisible] = useState<boolean>(false);
+  const [anchorPosition, setAnchorPosition] = useState<{ x: number; y: number } | undefined>();
+  
+  // --- START GOAL HANDLERS ---
+  const resetGoalForm = () => {
+    setEditingGoal(null);
+    setTitle("");
+    setDescription("");
+    setCategory("collective");
+    setGoalType("simple");
+    setMilestones([]);
+    setNewMilestone("");
+    setFinancialTarget("");
+    setFinancialCurrent("");
+    setFinancialContribution("");
+    setFinancialContributionType("fixed");
+  };
+
+  const openGoalModal = useCallback((goal?: Goal) => {
     if (goal) {
       setEditingGoal(goal);
       setTitle(goal.title);
@@ -1372,32 +940,26 @@ export default function GoalsScreen() {
       setFinancialContribution(goal.financialContribution?.toString() || "");
       setFinancialContributionType(goal.financialContributionType || "fixed");
     } else {
-      setEditingGoal(null);
-      setTitle("");
-      setDescription("");
-      setCategory("collective");
-      setGoalType("simple");
-      setMilestones([]);
-      setNewMilestone("");
-      setFinancialTarget("");
-      setFinancialCurrent("");
-      setFinancialContribution("");
-      setFinancialContributionType("fixed");
+      resetGoalForm();
     }
     setModalVisible(true);
-  };
-
-  const addMilestone = () => {
+  }, []);
+  
+  const addMilestone = useCallback(() => {
     if (!newMilestone.trim()) return;
-    setMilestones([...milestones, {
+    setMilestones(currentMilestones => [...currentMilestones, {
       id: Date.now().toString(),
       title: newMilestone.trim(),
       completed: false,
     }]);
     setNewMilestone("");
-  };
+  }, [newMilestone]);
 
-  const toggleMilestoneInGoal = (goalId: string, milestoneId: string) => {
+  const removeMilestone = useCallback((id: string) => {
+    setMilestones(currentMilestones => currentMilestones.filter((m) => m.id !== id));
+  }, []);
+
+  const toggleMilestoneInGoal = useCallback((goalId: string, milestoneId: string) => {
     const goal = goals.find((g) => g.id === goalId);
     if (!goal || !goal.milestones) return;
 
@@ -1413,13 +975,9 @@ export default function GoalsScreen() {
       progress,
       completed: completedCount === updatedMilestones.length,
     });
-  };
-
-  const removeMilestone = (id: string) => {
-    setMilestones(milestones.filter((m) => m.id !== id));
-  };
-
-  const handleContribute = (goal: Goal) => {
+  }, [goals, updateGoal]);
+  
+  const handleContribute = useCallback((goal: Goal) => {
     if (!goal.financialTarget || !goal.financialContribution) return;
 
     let newAmount = goal.financialCurrent || 0;
@@ -1438,9 +996,9 @@ export default function GoalsScreen() {
       progress,
       completed: newAmount >= goal.financialTarget,
     });
-  };
+  }, [updateGoal]);
 
-  const handleSave = () => {
+  const handleGoalSave = useCallback(() => {
     if (!title.trim()) return;
 
     const goalData: Partial<Goal> = {
@@ -1465,141 +1023,194 @@ export default function GoalsScreen() {
       goalData.financialContributionType = financialContributionType;
       goalData.progress = Math.round((current / target) * 100);
       goalData.completed = current >= target;
+    } else if (goalType === "simple") {
+        goalData.progress = undefined;
+        goalData.milestones = undefined;
+        goalData.financialTarget = undefined;
+        goalData.financialCurrent = undefined;
+        goalData.financialContribution = undefined;
     }
 
     if (editingGoal) {
       updateGoal(editingGoal.id, goalData);
     } else {
-      addGoal({
+      const newGoal = {
         id: Date.now().toString(),
         ...goalData,
         completed: false,
-      } as Goal);
+        progress: goalData.progress !== undefined ? goalData.progress : (goalType === "simple" ? undefined : 0),
+      } as Goal;
+      addGoal(newGoal);
     }
 
     setModalVisible(false);
-  };
+  }, [title, description, category, goalType, milestones, financialTarget, financialCurrent, financialContribution, financialContributionType, editingGoal, updateGoal, addGoal]);
 
-  const collectiveGoals = goals.filter((g) => g.category === "collective");
-  const herGoals = goals.filter((g) => g.category === "hers");
-  const myGoals = goals.filter((g) => g.category === "mine");
-
-  const handleLongPress = (goalId: string, event: any) => {
+  const handleLongPress = useCallback((goalId: string, event: any) => {
     if (settings.hapticFeedback) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    
-    // Get the position from the event
     if (event?.nativeEvent) {
       setAnchorPosition({
         x: event.nativeEvent.pageX,
         y: event.nativeEvent.pageY,
       });
     }
-    
     setSelectedGoalId(goalId);
     setActionMenuVisible(true);
+  }, [settings.hapticFeedback]);
+  
+  const resetDateForm = () => {
+    setEditingDateIdea(null);
+    setDateTitle("");
+    setDateDescription("");
+    setDateCategory("romantic");
+    setDateImageUrl("");
   };
+
+  const openDatesModal = useCallback((dateIdea?: DateIdea) => {
+    if (dateIdea) {
+      setEditingDateIdea(dateIdea);
+      setDateTitle(dateIdea.title);
+      setDateDescription(dateIdea.description);
+      setDateCategory(dateIdea.category);
+      setDateImageUrl(dateIdea.imageUrl || "");
+    } else {
+      resetDateForm();
+    }
+    setDateModalVisible(true);
+  }, []);
+
+  const handleDateSave = useCallback(() => {
+    if (!dateTitle.trim() || !dateDescription.trim()) return;
+
+    if (editingDateIdea) {
+      updateDateIdea(editingDateIdea.id, {
+        title: dateTitle.trim(),
+        description: dateDescription.trim(),
+        category: dateCategory,
+        imageUrl: dateImageUrl.trim() || undefined,
+      });
+    } else {
+      addDateIdea({
+        id: Date.now().toString(),
+        title: dateTitle.trim(),
+        description: dateDescription.trim(),
+        category: dateCategory,
+        completed: false,
+        imageUrl: dateImageUrl.trim() || undefined,
+      });
+    }
+
+    setDateModalVisible(false);
+  }, [dateTitle, dateDescription, dateCategory, dateImageUrl, editingDateIdea, updateDateIdea, addDateIdea]);
+
+  // --- END HANDLERS ---
+
+  // --- Rendering Functions ---
 
   const renderGoalCard = (goal: Goal, color: string) => {
     const isExpanded = expandedGoalId === goal.id;
+    const isFinancial = goal.type === "financial";
+    const isMilestone = goal.type === "milestone";
+
+    let progressText = "";
+    if (isFinancial && goal.financialTarget) {
+        progressText = `${goal.progress || 0}% ($${goal.financialCurrent?.toFixed(2) || "0.00"} / $${goal.financialTarget.toFixed(2)})`;
+    } else if (isMilestone && goal.milestones) {
+        const completedCount = goal.milestones.filter((m) => m.completed).length;
+        progressText = `${completedCount} / ${goal.milestones.length} Milestones (${goal.progress || 0}%)`;
+    } else if (goal.progress !== undefined) {
+        progressText = `${goal.progress}% Complete`;
+    } else if (goal.completed) {
+        progressText = "Completed!";
+    }
 
     return (
       <View key={goal.id} style={styles.goalCard}>
         <TouchableOpacity
-          style={styles.goalContent}
+          style={styles.goalToggleArea}
+          onLongPress={(e) => handleLongPress(goal.id, e)}
+          activeOpacity={0.7}
           onPress={() => {
             if (settings.hapticFeedback) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
-            toggleGoal(goal.id);
+            if (isMilestone || isFinancial) {
+                setExpandedGoalId(isExpanded ? null : goal.id);
+            } else {
+                toggleGoal(goal.id);
+            }
           }}
-          onLongPress={(e) => handleLongPress(goal.id, e)}
-          activeOpacity={0.7}
         >
-          <View style={styles.goalHeader}>
-            <View style={styles.goalHeaderLeft}>
+          {/* 1. Dedicated Completion Toggle Button */}
+          {(isMilestone || isFinancial) ? (
+            <TouchableOpacity
+              onPress={() => toggleGoal(goal.id)}
+              style={styles.completionToggle}
+              activeOpacity={0.8}
+            >
               {goal.completed ? (
                 <CheckCircle2 size={24} color={color} />
               ) : (
                 <Circle size={24} color={Colors.textLight} />
               )}
-              <View style={styles.goalText}>
-                <View style={styles.goalTitleRow}>
-                  <Text style={[styles.goalTitle, goal.completed && styles.completedText]}>
-                    {goal.title}
-                  </Text>
-                  {goal.type === "financial" && (
-                    <DollarSign size={16} color={color} />
-                  )}
-                  {goal.type === "milestone" && (
-                    <Target size={16} color={color} />
-                  )}
-                </View>
-                {goal.description && (
-                  <Text style={styles.goalDescription}>{goal.description}</Text>
+            </TouchableOpacity>
+          ) : (
+             <View style={styles.completionToggle}>
+                {goal.completed ? (
+                  <CheckCircle2 size={24} color={color} />
+                ) : (
+                  <Circle size={24} color={Colors.textLight} />
                 )}
+             </View>
+          )}
+
+          <View style={styles.goalContent}>
+            <View style={styles.goalHeader}>
+              <View style={styles.goalTitleRow}>
+                <Text style={[styles.goalTitle, goal.completed && styles.completedText]}>
+                  {goal.title}
+                </Text>
               </View>
             </View>
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation();
-                setExpandedGoalId(isExpanded ? null : goal.id);
-              }}
-              activeOpacity={0.7}
-            >
-              <ChevronDown
+            
+            {goal.description && (
+                <Text style={styles.goalDescription}>{goal.description}</Text>
+            )}
+
+            {(isMilestone || isFinancial || goal.progress !== undefined) && (
+                <Text style={[styles.progressSummary, goal.completed && styles.completedText]}>
+                    {progressText}
+                </Text>
+            )}
+            
+            {goal.progress !== undefined && !goal.completed && (
+              <View style={styles.progressBar}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${goal.progress}%`, backgroundColor: color },
+                  ]}
+                />
+              </View>
+            )}
+
+            {(isMilestone || isFinancial) && (
+                <ChevronDown
                 size={20}
                 color={Colors.textLight}
                 style={[styles.chevron, isExpanded && styles.chevronExpanded]}
-              />
-            </TouchableOpacity>
+                />
+            )}
           </View>
         </TouchableOpacity>
 
-        {goal.type === "financial" && goal.financialTarget && (
-          <View style={styles.financialInfo}>
-            <View style={styles.financialAmount}>
-              <Text style={styles.financialLabel}>Current</Text>
-              <Text style={styles.financialValue}>
-                ${goal.financialCurrent?.toFixed(2) || "0.00"}
-              </Text>
-            </View>
-            <View style={styles.financialAmount}>
-              <Text style={styles.financialLabel}>Target</Text>
-              <Text style={[styles.financialValue, { color: color }]}>
-                ${goal.financialTarget.toFixed(2)}
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {goal.progress !== undefined && !goal.completed && goal.type !== "milestone" && (
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${goal.progress}%`, backgroundColor: color },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressText}>{goal.progress}%</Text>
-          </View>
-        )}
-
-        {goal.type === "milestone" && goal.milestones && goal.milestones.length > 0 && (
-          <View style={styles.milestonesPreview}>
-            <Text style={styles.milestonesCount}>
-              {goal.milestones.filter((m) => m.completed).length} / {goal.milestones.length} milestones
-            </Text>
-          </View>
-        )}
-
-        {isExpanded && (
+        {isExpanded && (isMilestone || isFinancial) && (
           <View style={styles.expandedContent}>
-            {goal.type === "milestone" && goal.milestones && goal.milestones.length > 0 && (
+            {isMilestone && goal.milestones && goal.milestones.length > 0 && (
               <View style={styles.milestonesSection}>
+                <Text style={styles.detailHeader}>Milestone Checklist</Text>
                 {goal.milestones.map((milestone) => (
                   <TouchableOpacity
                     key={milestone.id}
@@ -1625,98 +1236,17 @@ export default function GoalsScreen() {
               </View>
             )}
 
-            {goal.type === "financial" &&
+            {isFinancial &&
               goal.financialContribution &&
               !goal.completed && (
-                <TouchableOpacity
-                  style={[styles.contributeButton, { backgroundColor: color }]}
-                  onPress={() => handleContribute(goal)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.contributeButtonText}>
-                    Add {goal.financialContributionType === "fixed"
-                      ? `$${goal.financialContribution.toFixed(2)}`
-                      : `${goal.financialContribution}%`}
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-            <View style={styles.goalActions}>
-              <TouchableOpacity
-                style={[styles.actionButton, { borderColor: color }]}
-                onPress={() => openModal(goal)}
-                activeOpacity={0.7}
-              >
-                <Edit3 size={18} color={color} />
-                <Text style={[styles.actionButtonText, { color }]}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, { borderColor: Colors.textLight }]}
-                onPress={() => {
-                  deleteGoal(goal.id);
-                  setExpandedGoalId(null);
-                }}
-                activeOpacity={0.7}
-              >
-                <Trash2 size={18} color={Colors.textLight} />
-                <Text style={styles.actionButtonText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </View>
-    );
-  };
-
-  const renderGoalSection = (sectionTitle: string, sectionGoals: typeof goals, color: string) => {
-    return (
-      <View style={styles.section}>
-        <View style={[styles.sectionHeader, { borderLeftColor: color }]}>
-          <Text style={styles.sectionTitle}>{sectionTitle}</Text>
-          <Text style={styles.sectionCount}>
-            {sectionGoals.filter((g) => g.completed).length}/{sectionGoals.length}
-          </Text>
-        </View>
-        {sectionGoals.map((goal) => renderGoalCard(goal, color))}
-      </View>
-    );
-  };
-
-  return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={[Colors.pastelGreen, Colors.softWhite]}
-        style={styles.headerGradient}
-      >
-        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.title}>Our Goals</Text>
-              <Text style={styles.subtitle}>Building our future together</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => openModal()}
-              activeOpacity={0.7}
-            >
-              <Plus size={24} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {renderGoalSection("Together", collectiveGoals, Colors.darkGreen)}
-        {renderGoalSection("Hers", herGoals, Colors.lightBrown)}
-        {renderGoalSection("Mine", myGoals, Colors.darkBrown)}
-        <View style={{ height: 40 }} />
-      </ScrollView>
-
-      <ActionMenu
-        visible={actionMenuVisible}
-        anchorPosition={anchorPosition}
-        onClose={() => {
-          setActionMen
+                <>
+                  <Text style={styles.detailHeader}>Financial Contribution</Text>
+                  <TouchableOpacity
+                    style={[styles.contributeButton, { backgroundColor: color }]}
+                    onPress={() => handleContribute(goal)}
+                    activeOpacity={0.7}
+                  >
+            
 
 ... [Content truncated at 15000 characters] ...
 ```
@@ -1728,9 +1258,10 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Dimensions } from
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp } from "../../contexts/AppContext";
+import { useApp } from "@/contexts/AppContext";
 import Colors from "../../constants/colors";
-import { Heart, Target, Calendar, MapPin, Sparkles } from "lucide-react-native";
+import { Heart, Target, Calendar, MapPin, Sparkles, ChevronRight, CheckCircle2, Quote } from "lucide-react-native";
+import { Link } from "expo-router";
 
 const { width } = Dimensions.get("window");
 
@@ -1742,6 +1273,34 @@ export default function HomeScreen() {
   const completedDates = dateIdeas.filter((d) => d.completed).length;
   const visitedPlaces = places.filter((p) => p.visited).length;
 
+  const topTwoGoals = goals
+    .filter((g) => !g.completed && g.category === 'collective') // Filter for collective, incomplete goals
+    .sort((a, b) => (b.progress || 0) - (a.progress || 0)) // Sort by progress (optional)
+    .slice(0, 2);
+
+  // The statItems array is no longer used for a dedicated section but kept here 
+  // in case the metrics are needed elsewhere.
+  const statItems = [
+    { label: "Memories", icon: Heart, number: memories.length, color: Colors.darkGreen, link: "/memories" },
+    { label: "Goals Done", icon: Target, number: `${completedGoals}/${goals.length}`, color: Colors.lightBrown, link: "/goals" },
+    { label: "Dates Done", icon: Calendar, number: completedDates, color: Colors.darkGreen, link: "/goals" },
+    { label: "Places Visited", icon: MapPin, number: visitedPlaces, color: Colors.lightBrown, link: "/travel" },
+  ];
+
+  const renderGoalProgress = (goal: typeof goals[0], color: string) => (
+    <View style={styles.goalProgressContainer}>
+      <Text style={styles.goalProgressText}>{goal.progress || 0}% Complete</Text>
+      <View style={styles.progressBar}>
+        <View
+          style={[
+            styles.progressFill,
+            { width: `${goal.progress || 0}%`, backgroundColor: color },
+          ]}
+        />
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -1749,76 +1308,74 @@ export default function HomeScreen() {
         style={styles.headerGradient}
       >
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-          <Text style={styles.greeting}>Our Space</Text>
-          <Text style={styles.subtitle}>Together, Forever</Text>
+          <Text style={styles.greeting}>Welcome Home</Text>
+          <Text style={styles.subtitle}>Let's check our progress</Text>
         </View>
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        
+        {/* Priority Goals Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Latest Memories</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memoryScroll}>
-            {memories.slice(0, 5).map((memory) => (
-              <View key={memory.id} style={styles.memoryCard}>
-                <Image source={{ uri: memory.imageUrl }} style={styles.memoryImage} contentFit="cover" />
-                <View style={styles.memoryOverlay}>
-                  <Text style={styles.memoryTitle}>{memory.title}</Text>
+          <Link href="/goals" asChild>
+            <TouchableOpacity style={styles.sectionHeaderLink} activeOpacity={0.7}>
+                <Text style={styles.sectionTitle}>Top Priority Goals</Text>
+                <ChevronRight size={20} color={Colors.textLight} />
+            </TouchableOpacity>
+          </Link>
+          <View style={styles.topGoalsGrid}>
+            {topTwoGoals.length > 0 ? (
+                topTwoGoals.map((goal, index) => (
+                    <View key={goal.id} style={[styles.priorityGoalCard, { borderColor: Colors.darkGreen }]}>
+                        <View style={styles.goalHeaderRow}>
+                            <Target size={20} color={Colors.darkGreen} />
+                            <Text style={styles.priorityGoalTitle} numberOfLines={2}>{goal.title}</Text>
+                        </View>
+                        {renderGoalProgress(goal, Colors.darkGreen)}
+                        {goal.description && <Text style={styles.goalDescription} numberOfLines={1}>{goal.description}</Text>}
+                    </View>
+                ))
+            ) : (
+                <View style={styles.emptyState}>
+                    <Text style={styles.emptyText}>No active collective goals! Start planning.</Text>
                 </View>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { backgroundColor: Colors.pastelGreen }]}>
-            <Heart size={24} color={Colors.darkGreen} />
-            <Text style={styles.statNumber}>{memories.length}</Text>
-            <Text style={styles.statLabel}>Memories</Text>
-          </View>
-
-          <View style={[styles.statCard, { backgroundColor: Colors.cream }]}>
-            <Target size={24} color={Colors.lightBrown} />
-            <Text style={styles.statNumber}>{completedGoals}/{goals.length}</Text>
-            <Text style={styles.statLabel}>Goals</Text>
-          </View>
-
-          <View style={[styles.statCard, { backgroundColor: Colors.pastelGreen }]}>
-            <Calendar size={24} color={Colors.darkGreen} />
-            <Text style={styles.statNumber}>{completedDates}</Text>
-            <Text style={styles.statLabel}>Dates Done</Text>
-          </View>
-
-          <View style={[styles.statCard, { backgroundColor: Colors.cream }]}>
-            <MapPin size={24} color={Colors.lightBrown} />
-            <Text style={styles.statNumber}>{visitedPlaces}</Text>
-            <Text style={styles.statLabel}>Places Visited</Text>
+            )}
           </View>
         </View>
 
+        {/* Quick Calendar / Reminder Widget */}
         <View style={styles.section}>
-          <View style={styles.visionBoardHeader}>
-            <Text style={styles.sectionTitle}>Vision Board</Text>
-            <Sparkles size={20} color={Colors.lightBrown} />
-          </View>
-          <View style={styles.visionGrid}>
-            {memories.slice(0, 2).map((item, index) => (
-              <TouchableOpacity key={item.id} style={styles.visionCard}>
-                <Image source={{ uri: item.imageUrl }} style={styles.visionImage} contentFit="cover" />
-                <LinearGradient
-                  colors={["transparent", "rgba(0,0,0,0.6)"]}
-                  style={styles.visionOverlay}
-                >
-                  <Text style={styles.visionText}>{item.title}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))}
+          <Link href="/goals" asChild>
+            <TouchableOpacity style={styles.sectionHeaderLink} activeOpacity={0.7}>
+                <Text style={styles.sectionTitle}>Upcoming Dates & Reminders</Text>
+                <ChevronRight size={20} color={Colors.textLight} />
+            </TouchableOpacity>
+          </Link>
+          <View style={[styles.calendarCard, { backgroundColor: Colors.cream, borderColor: Colors.pastelGreen }]}>
+            <View style={styles.calendarHeader}>
+                <Calendar size={24} color={Colors.lightBrown} />
+                <Text style={styles.calendarTitle}>Today, Nov 12</Text>
+            </View>
+            <View style={styles.calendarEvents}>
+                <Text style={styles.eventText}>No key reminders set.</Text>
+                <Text style={styles.eventSubText}>Tap to set your next important date or milestone.</Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.quoteCard}>
-          <Text style={styles.quote}>&ldquo;In all the world, there is no heart for me like yours.&rdquo;</Text>
-          <Text style={styles.quoteAuthor}>- Maya Angelou</Text>
+        {/* Removed "Our History" Stats Section */}
+
+        {/* Quote Card (Revamped) */}
+        <View style={styles.quoteBlock}>
+            <Quote size={28} color={Colors.lightBrown} style={styles.quoteIcon} />
+            <Text style={styles.revampedQuote}>
+                &ldquo;In all the world, there is no heart for me like yours.
+                In all the world, there is no love for you like mine.&rdquo;
+            </Text>
+            <Text style={styles.revampedQuoteAuthor}>— Maya Angelou</Text>
         </View>
+        
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -1854,138 +1411,207 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     paddingHorizontal: 24,
   },
+  sectionHeaderLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingRight: 4,
+  },
   sectionTitle: {
     fontSize: 22,
     fontWeight: "600" as const,
     color: Colors.text,
-    marginBottom: 16,
   },
-  memoryScroll: {
-    marginHorizontal: -24,
-    paddingHorizontal: 24,
+  // --- PRIORITY GOALS ---
+  topGoalsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  memoryCard: {
-    width: width * 0.65,
-    height: 200,
-    marginRight: 16,
-    borderRadius: 20,
+  priorityGoalCard: {
+    width: '100%', 
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    backgroundColor: Colors.cardBackground,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    marginBottom: 10,
+  },
+  goalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  priorityGoalTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  goalDescription: {
+    fontSize: 13,
+    color: Colors.textLight,
+  },
+  goalProgressContainer: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  goalProgressText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.darkGreen,
+    marginBottom: 4,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: Colors.border,
+    borderRadius: 2,
     overflow: "hidden",
   },
-  memoryImage: {
-    width: "100%",
+  progressFill: {
     height: "100%",
   },
-  memoryOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    backgroundColor: "rgba(0,0,0,0.3)",
+  emptyState: {
+    width: '100%',
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    borderStyle: 'dashed' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  memoryTitle: {
-    fontSize: 18,
-    fontWeight: "600" as const,
-    color: "#FFF",
+  emptyText: {
+    fontSize: 16,
+    color: Colors.textLight,
   },
+  // --- CALENDAR CARD ---
+  calendarCard: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  calendarTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  calendarEvents: {
+    paddingLeft: 4,
+  },
+  eventText: {
+    fontSize: 16,
+    color: Colors.text,
+    fontWeight: '600' as const,
+    marginBottom: 4,
+  },
+  eventSubText: {
+    fontSize: 14,
+    color: Colors.textLight,
+  },
+  // --- STATS GRID (Removed from JSX, kept styles for potential reuse) ---
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    paddingHorizontal: 24,
     gap: 12,
-    marginBottom: 32,
   },
   statCard: {
     flex: 1,
     minWidth: (width - 60) / 2,
     padding: 20,
     borderRadius: 16,
-    alignItems: "center",
-    gap: 8,
+    alignItems: "flex-start",
+    gap: 4,
+    borderWidth: 1,
   },
   statNumber: {
     fontSize: 24,
     fontWeight: "700" as const,
     color: Colors.text,
+    marginTop: 8,
   },
   statLabel: {
     fontSize: 14,
     color: Colors.textLight,
+    fontWeight: '600' as const,
   },
-  visionBoardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
-  },
-  visionGrid: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  visionCard: {
-    flex: 1,
-    height: 150,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  visionImage: {
-    width: "100%",
-    height: "100%",
-  },
-  visionOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 12,
-  },
-  visionText: {
-    fontSize: 14,
-    fontWeight: "600" as const,
-    color: "#FFF",
-  },
-  quoteCard: {
+  // --- QUOTE CARD (Revamped) ---
+  quoteBlock: {
     marginHorizontal: 24,
     marginBottom: 32,
-    padding: 24,
-    backgroundColor: Colors.cream,
+    padding: 30,
+    backgroundColor: Colors.softWhite,
     borderRadius: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.lightBrown,
+    borderWidth: 1,
+    borderColor: Colors.pastelGreen,
+    shadowColor: Colors.darkGreen,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  quote: {
-    fontSize: 16,
+  quoteIcon: {
+    position: 'absolute',
+    top: 15,
+    left: 15,
+    opacity: 0.2,
+  },
+  revampedQuote: {
+    fontSize: 18,
     fontStyle: "italic" as const,
     color: Colors.text,
-    marginBottom: 8,
-    lineHeight: 24,
+    marginBottom: 12,
+    lineHeight: 28,
+    paddingTop: 10, // Offset for the icon
+    paddingLeft: 10,
   },
-  quoteAuthor: {
+  revampedQuoteAuthor: {
     fontSize: 14,
     color: Colors.textLight,
     textAlign: "right" as const,
+    fontWeight: '600' as const,
   },
 });
-
 ```
 
 ### File: `app\(tabs)\memories.tsx`
 
 ```tsx
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Dimensions } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../../contexts/AppContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import Colors from "../../constants/colors";
-import { Plus, Trash2, Edit3 } from "lucide-react-native";
+import { Plus, Trash2, Edit3, Calendar } from "lucide-react-native"; // Import Calendar icon
 import { useState } from "react";
 import FormModal, { FormInput, FormButton } from "../../components/FormModal";
 import ActionMenu from "../../components/ActionMenu";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import * as Haptics from "expo-haptics";
 import type { Memory } from "../../types";
+
+const { width } = Dimensions.get("window"); // Added for use in styles
 
 export default function MemoriesScreen() {
   const { memories, addMemory, deleteMemory, updateMemory } = useApp();
@@ -2063,6 +1689,18 @@ export default function MemoriesScreen() {
     setActionMenuVisible(true);
   };
 
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return dateString; // Fallback for invalid date
+    }
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -2087,7 +1725,7 @@ export default function MemoriesScreen() {
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.grid}>
+        <View style={styles.list}>
           {memories.map((memory) => (
             <TouchableOpacity
               key={memory.id}
@@ -2096,25 +1734,22 @@ export default function MemoriesScreen() {
               activeOpacity={0.9}
             >
               <Image source={{ uri: memory.imageUrl }} style={styles.memoryImage} contentFit="cover" />
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.7)"]}
-                style={styles.overlay}
-              >
-                <Text style={styles.memoryTitle}>{memory.title}</Text>
-                <Text style={styles.memoryDate}>
-                  {new Date(memory.date).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </Text>
+              <View style={styles.memoryContent}>
+                <View style={styles.memoryHeader}>
+                  <Text style={styles.memoryTitle}>{memory.title}</Text>
+                  <View style={styles.dateContainer}>
+                    <Calendar size={14} color={Colors.textLight} />
+                    <Text style={styles.memoryDate}>{formatDate(memory.date)}</Text>
+                  </View>
+                </View>
                 {memory.description && (
                   <Text style={styles.memoryDescription}>{memory.description}</Text>
                 )}
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           ))}
         </View>
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       <ActionMenu
@@ -2253,54 +1888,61 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 16,
   },
-  grid: {
+  list: { // Renamed from grid
     paddingHorizontal: 24,
-    gap: 16,
+    gap: 24, // Increased spacing for list items
     paddingBottom: 32,
   },
   memoryCard: {
-    width: "48%",
-    aspectRatio: 1,
-    borderRadius: 20,
+    width: "100%", // Full width
+    borderRadius: 20, // Slightly more rounded corners
     overflow: "hidden",
-    marginBottom: 16,
+    backgroundColor: Colors.cardBackground,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOpacity: 0.08, // Reduced shadow for a softer look
+    shadowRadius: 8,
+    elevation: 3,
   },
   memoryImage: {
     width: "100%",
-    height: "100%",
+    height: 200, // Fixed height for a prominent image
   },
-  overlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
+  memoryContent: {
+    padding: 16, // Padding for the text content
   },
-  memoryTitle: {
-    fontSize: 24,
-    fontWeight: "700" as const,
-    color: "#FFF",
-    marginBottom: 4,
-  },
-  memoryDate: {
-    fontSize: 14,
-    color: "#FFF",
-    opacity: 0.9,
+  memoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 8,
   },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.cream,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  memoryTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: "700" as const,
+    color: Colors.text,
+  },
+  memoryDate: {
+    fontSize: 13,
+    color: Colors.textLight,
+    fontWeight: "600" as const,
+  },
   memoryDescription: {
-    fontSize: 16,
-    color: "#FFF",
-    opacity: 0.9,
+    fontSize: 15,
+    color: Colors.textLight,
     lineHeight: 22,
   },
 });
-
 ```
 
 ### File: `app\(tabs)\settings.tsx`
@@ -2527,7 +2169,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "../../contexts/AppContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import Colors from "../../constants/colors";
-import { CheckCircle2, Circle, MapPin, Plus, Trash2, Edit3 } from "lucide-react-native";
+import { CheckCircle2, Circle, MapPin, Plus, Trash2, Edit3, Globe } from "lucide-react-native";
 import { useState } from "react";
 import FormModal, { FormInput, FormButton } from "../../components/FormModal";
 import ActionMenu from "../../components/ActionMenu";
@@ -2614,58 +2256,61 @@ export default function TravelScreen() {
 
   const visited = places.filter((p) => p.visited);
   const wishlist = places.filter((p) => !p.visited);
+  
+  const getColor = (place: Place) => (place.visited ? Colors.darkGreen : Colors.lightBrown);
 
-  const renderPlace = (place: typeof places[0]) => (
-    <View key={place.id} style={styles.placeCard}>
-      <Image source={{ uri: place.imageUrl }} style={styles.placeImage} contentFit="cover" />
-      <TouchableOpacity
-        style={styles.placeOverlay}
-        onPress={() => {
-          if (settings.hapticFeedback) {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }
-          togglePlace(place.id);
-        }}
-        onLongPress={(e) => handleLongPress(place.id, e)}
-        activeOpacity={0.7}
-      >
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.8)"]}
-          style={styles.placeGradient}
+  const renderPlace = (place: typeof places[0]) => {
+    const color = getColor(place);
+    
+    return (
+      <View key={place.id} style={styles.placeCard}>
+        <TouchableOpacity
+          style={styles.placeContent}
+          onLongPress={(e) => handleLongPress(place.id, e)}
+          activeOpacity={0.9}
         >
-          <View style={styles.placeContent}>
-            <View style={styles.placeHeader}>
-              <View style={styles.placeInfo}>
+            {/* Left Section: Image/Icon */}
+            <View style={styles.cardImageContainer}>
+                <Image source={{ uri: place.imageUrl }} style={styles.cardImage} contentFit="cover" />
+            </View>
+
+            {/* Center Section: Text Info */}
+            <View style={styles.cardCenter}>
                 <Text style={styles.placeName}>{place.name}</Text>
                 <View style={styles.locationRow}>
-                  <MapPin size={14} color="#FFF" />
+                  <MapPin size={14} color={Colors.textLight} />
                   <Text style={styles.placeLocation}>{place.location}</Text>
                 </View>
-              </View>
-              {place.visited ? (
-                <View style={styles.checkBadge}>
-                  <CheckCircle2 size={20} color={Colors.pastelGreen} />
-                </View>
-              ) : (
-                <View style={styles.checkBadge}>
-                  <Circle size={20} color="#FFF" />
-                </View>
-              )}
+                {place.notes && <Text style={styles.placeNotes} numberOfLines={2}>{place.notes}</Text>}
+                {!place.visited && (
+                    <View style={styles.statusBadge}>
+                        <Globe size={12} color={color} />
+                        <Text style={[styles.statusText, { color }]}>Wishlist</Text>
+                    </View>
+                )}
             </View>
-            {place.date && (
-              <Text style={styles.placeDate}>
-                {new Date(place.date).toLocaleDateString("en-US", {
-                  month: "long",
-                  year: "numeric",
-                })}
-              </Text>
-            )}
-            {place.notes && <Text style={styles.placeNotes}>{place.notes}</Text>}
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
-  );
+            
+            {/* Right Section: Toggle Button */}
+            <TouchableOpacity
+                style={styles.cardRight}
+                onPress={() => {
+                  if (settings.hapticFeedback) {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
+                  togglePlace(place.id);
+                }}
+                activeOpacity={0.7}
+            >
+              {place.visited ? (
+                <CheckCircle2 size={24} color={color} />
+              ) : (
+                <Circle size={24} color={Colors.textLight} />
+              )}
+            </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -2698,7 +2343,7 @@ export default function TravelScreen() {
             <View style={[styles.sectionHeader, { borderLeftColor: Colors.lightBrown }]}>
               <Text style={styles.sectionTitle}>Dream Destinations</Text>
             </View>
-            <View style={styles.placesGrid}>
+            <View style={styles.placesList}>
               {wishlist.map((place) => renderPlace(place))}
             </View>
           </View>
@@ -2709,11 +2354,12 @@ export default function TravelScreen() {
             <View style={[styles.sectionHeader, { borderLeftColor: Colors.darkGreen }]}>
               <Text style={styles.sectionTitle}>Been There</Text>
             </View>
-            <View style={styles.placesGrid}>
+            <View style={styles.placesList}>
               {visited.map((place) => renderPlace(place))}
             </View>
           </View>
         )}
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       <ActionMenu
@@ -2729,12 +2375,13 @@ export default function TravelScreen() {
             ? (() => {
                 const place = places.find((p) => p.id === selectedPlaceId);
                 if (!place) return [];
+                const color = getColor(place);
                 return [
                   {
                     label: "Edit",
                     icon: Edit3,
                     onPress: () => openModal(place),
-                    color: place.visited ? Colors.darkGreen : Colors.lightBrown,
+                    color: color,
                   },
                   {
                     label: "Delete",
@@ -2868,53 +2515,48 @@ const styles = StyleSheet.create({
     fontWeight: "600" as const,
     color: Colors.text,
   },
-  placesGrid: {
-    gap: 16,
+  placesList: {
+    gap: 12, // Reduced gap between cards
   },
   placeCard: {
-    width: "100%",
-    height: 280,
-    borderRadius: 24,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
-    marginBottom: 16,
-  },
-  placeImage: {
-    width: "100%",
-    height: "100%",
-  },
-  placeOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    top: 0,
-  },
-  placeGradient: {
-    flex: 1,
-    justifyContent: "flex-end",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   placeContent: {
-    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 12,
   },
-  placeHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 8,
+  cardImageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.border,
   },
-  placeInfo: {
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cardCenter: {
     flex: 1,
+    gap: 4,
+  },
+  cardRight: {
+    padding: 8, // Make the toggle target larger
   },
   placeName: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "700" as const,
-    color: "#FFF",
-    marginBottom: 4,
+    color: Colors.text,
+    marginBottom: 2,
   },
   locationRow: {
     flexDirection: "row",
@@ -2923,39 +2565,40 @@ const styles = StyleSheet.create({
   },
   placeLocation: {
     fontSize: 14,
-    color: "#FFF",
+    color: Colors.textLight,
     opacity: 0.9,
-  },
-  checkBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  placeDate: {
-    fontSize: 14,
-    color: "#FFF",
-    opacity: 0.85,
-    marginTop: 8,
   },
   placeNotes: {
-    fontSize: 15,
-    color: "#FFF",
+    fontSize: 14,
+    color: Colors.textLight,
     opacity: 0.9,
-    marginTop: 8,
-    lineHeight: 22,
+    marginTop: 4,
+    lineHeight: 20,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.cream,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
   },
 });
-
 ```
 
 ### File: `app\(tabs)\_layout.tsx`
 
 ```tsx
 import { Tabs } from "expo-router";
-import { Home, Heart, Target, Calendar, MapPin, Settings } from "lucide-react-native";
+// Only importing icons for the five chosen tabs
+import { Home, Heart, Target, MapPin, Settings } from "lucide-react-native"; 
 import React from "react";
 import Colors from "../../constants/colors";
 
@@ -2986,18 +2629,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Heart color={color} size={size} />,
         }}
       />
+      {/* Goals now handles both Goals and Dates content. 
+        Dates tab (dates.tsx) is still in the directory but now orphans, accessed via Goals.
+      */}
       <Tabs.Screen
         name="goals"
         options={{
-          title: "Goals",
+          title: "Goals & Plan", // Updated title for clarity
           tabBarIcon: ({ color, size }) => <Target color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="dates"
-        options={{
-          title: "Dates",
-          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -3010,14 +2649,801 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: "More", // Utility tab for Settings and Vision Board navigation
           tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
         }}
       />
+      {/* The 'vision' and 'dates' files must remain in the app/(tabs)/ directory 
+        but without a corresponding <Tabs.Screen> entry, they become hidden pages 
+        accessible only via deep links or navigation from another screen.
+      */}
     </Tabs>
   );
 }
+```
 
+### File: `app\modals\dates.tsx`
+
+```tsx
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from "react-native";
+import { Image } from "expo-image";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useApp } from "@/contexts/AppContext"; // Using alias for consistency
+import { useSettings } from "../../contexts/SettingsContext";
+import Colors from "../../constants/colors";
+import { CheckCircle2, Circle, Home as HomeIcon, Mountain, Heart as HeartIcon, Smile, Plus, Trash2, Edit3 } from "lucide-react-native";
+import type { DateIdea } from "../../types";
+import { useState } from "react";
+import FormModal, { FormInput, FormButton } from "../../components/FormModal";
+import ActionMenu from "../../components/ActionMenu";
+import ConfirmDialog from "../../components/ConfirmDialog";
+import * as Haptics from "expo-haptics";
+
+const categoryIcons = {
+  cozy: HomeIcon,
+  adventure: Mountain,
+  romantic: HeartIcon,
+  fun: Smile,
+};
+
+const categoryColors = {
+  cozy: Colors.lightBrown,
+  adventure: Colors.darkGreen,
+  romantic: Colors.pastelGreen,
+  fun: Colors.darkBrown,
+};
+
+// NOTE: This component no longer accepts hideHeader or renders its own header/gradient/addButton
+export default function DatesScreenContent() {
+  const { dateIdeas, toggleDateIdea, addDateIdea, deleteDateIdea, updateDateIdea } = useApp();
+  const { settings } = useSettings();
+  const insets = useSafeAreaInsets();
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [editingDateIdea, setEditingDateIdea] = useState<DateIdea | null>(null);
+  const [title, setTitle] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
+  const [category, setCategory] = useState<DateIdea["category"]>("romantic");
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [actionMenuVisible, setActionMenuVisible] = useState<boolean>(false);
+  const [selectedDateIdeaId, setSelectedDateIdeaId] = useState<string | null>(null);
+  const [anchorPosition, setAnchorPosition] = useState<{ x: number; y: number } | undefined>();
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState<boolean>(false);
+  const [dateIdeaToDelete, setDateIdeaToDelete] = useState<DateIdea | null>(null);
+
+  // Re-define internal functions needed for modals and actions
+  const openModal = (dateIdea?: DateIdea) => {
+    if (dateIdea) {
+      setEditingDateIdea(dateIdea);
+      setTitle(dateIdea.title);
+      setDescription(dateIdea.description);
+      setCategory(dateIdea.category);
+      setImageUrl(dateIdea.imageUrl || "");
+    } else {
+      setEditingDateIdea(null);
+      setTitle("");
+      setDescription("");
+      setCategory("romantic");
+      setImageUrl("");
+    }
+    setModalVisible(true);
+  };
+
+  const handleSave = () => {
+    if (!title.trim() || !description.trim()) return;
+
+    if (editingDateIdea) {
+      updateDateIdea(editingDateIdea.id, {
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        imageUrl: imageUrl.trim() || undefined,
+      });
+    } else {
+      addDateIdea({
+        id: Date.now().toString(),
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        completed: false,
+        imageUrl: imageUrl.trim() || undefined,
+      });
+    }
+
+    setTitle("");
+    setDescription("");
+    setCategory("romantic");
+    setImageUrl("");
+    setModalVisible(false);
+  };
+
+  const handleLongPress = (dateIdeaId: string, event: any) => {
+    if (settings.hapticFeedback) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    
+    if (event?.nativeEvent) {
+      setAnchorPosition({
+        x: event.nativeEvent.pageX,
+        y: event.nativeEvent.pageY,
+      });
+    }
+    
+    setSelectedDateIdeaId(dateIdeaId);
+    setActionMenuVisible(true);
+  };
+
+  const categories: DateIdea["category"][] = ["cozy", "adventure", "romantic", "fun"];
+
+  return (
+    <View style={styles.container}>
+      
+      {/* NO HEADER RENDERED HERE. Only the content is visible. */}
+      {/* The ScrollView is also removed, and content is wrapped in a View */}
+      <View style={styles.content}> 
+        {categories.map((category) => {
+          const categoryDates = dateIdeas.filter((d) => d.category === category);
+          if (categoryDates.length === 0) return null;
+
+          const IconComponent = categoryIcons[category];
+          const color = categoryColors[category];
+
+          return (
+            <View key={category} style={styles.section}>
+              <View style={[styles.categoryHeader, { borderLeftColor: color }]}>
+                <View style={styles.categoryTitleRow}>
+                  <IconComponent size={20} color={color} />
+                  <Text style={styles.categoryTitle}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </Text>
+                </View>
+                <Text style={styles.categoryCount}>
+                    {categoryDates.filter(d => d.completed).length}/{categoryDates.length}
+                </Text>
+              </View>
+
+              {categoryDates.map((dateIdea) => (
+                <View key={dateIdea.id} style={styles.dateCard}>
+                  <TouchableOpacity
+                    style={styles.dateContent}
+                    onPress={() => {}}
+                    onLongPress={(e) => handleLongPress(dateIdea.id, e)}
+                    activeOpacity={0.9}
+                  >
+                    <View style={styles.cardLeft}>
+                        {dateIdea.imageUrl ? (
+                            <Image 
+                                source={{ uri: dateIdea.imageUrl }}
+                                style={styles.cardImage}
+                                contentFit="cover"
+                            />
+                        ) : (
+                            <View style={[styles.cardImagePlaceholder, { backgroundColor: color + "20" }]}>
+                                <IconComponent size={24} color={color} />
+                            </View>
+                        )}
+                    </View>
+                    
+                    <View style={styles.cardCenter}>
+                        <Text style={[styles.dateTitle, dateIdea.completed && styles.completedText]}>
+                            {dateIdea.title}
+                        </Text>
+                        <Text style={styles.dateDescription} numberOfLines={2}>
+                            {dateIdea.description}
+                        </Text>
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.cardRight}
+                        onPress={() => {
+                            if (settings.hapticFeedback) {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            }
+                            toggleDateIdea(dateIdea.id);
+                        }}
+                        activeOpacity={0.7}
+                    >
+                      {dateIdea.completed ? (
+                        <CheckCircle2 size={24} color={color} />
+                      ) : (
+                        <Circle size={24} color={Colors.textLight} />
+                      )}
+                    </TouchableOpacity>
+
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          );
+        })}
+        <View style={{ height: 40 }} />
+      </View>
+
+      {/* Action Menu and Modals remain here, controlled locally by Dates content */}
+      <ActionMenu
+        visible={actionMenuVisible}
+        anchorPosition={anchorPosition}
+        onClose={() => {
+          setActionMenuVisible(false);
+          setSelectedDateIdeaId(null);
+          setAnchorPosition(undefined);
+        }}
+        options={
+          selectedDateIdeaId
+            ? (() => {
+                const dateIdea = dateIdeas.find((d) => d.id === selectedDateIdeaId);
+                if (!dateIdea) return [];
+                const catColor = categoryColors[dateIdea.category];
+                return [
+                  {
+                    label: "Edit",
+                    icon: Edit3,
+                    onPress: () => openModal(dateIdea),
+                    color: catColor,
+                  },
+                  {
+                    label: "Delete",
+                    icon: Trash2,
+                    onPress: () => {
+                      setDateIdeaToDelete(dateIdea);
+                      setActionMenuVisible(false);
+                      setConfirmDeleteVisible(true);
+                    },
+                    destructive: true,
+                  },
+                ];
+              })()
+            : []
+        }
+      />
+
+      <ConfirmDialog
+        visible={confirmDeleteVisible}
+        title="Delete Date Idea"
+        message={`Are you sure you want to delete "${dateIdeaToDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={() => {
+          if (dateIdeaToDelete) {
+            deleteDateIdea(dateIdeaToDelete.id);
+          }
+          setConfirmDeleteVisible(false);
+          setDateIdeaToDelete(null);
+        }}
+        onCancel={() => {
+          setConfirmDeleteVisible(false);
+          setDateIdeaToDelete(null);
+        }}
+        destructive={true}
+      />
+
+      <FormModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={editingDateIdea ? "Edit Date Idea" : "Add Date Idea"}
+      >
+        <FormInput
+          label="Title"
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Perfect date idea..."
+        />
+        <FormInput
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Describe the date..."
+          multiline
+        />
+        <View style={styles.categorySelector}>
+          <Text style={styles.categoryLabel}>Category</Text>
+          <View style={styles.categoryButtons}>
+            {(['cozy', 'adventure', 'romantic', 'fun'] as const).map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[
+                  styles.categoryButton,
+                  category === cat && styles.categoryButtonActive,
+                ]}
+                onPress={() => setCategory(cat)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.categoryButtonText,
+                    category === cat && styles.categoryButtonTextActive,
+                  ]}
+                >
+                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+        <FormInput
+          label="Image URL (optional)"
+          value={imageUrl}
+          onChangeText={setImageUrl}
+          placeholder="https://..."
+        />
+        <FormButton title={editingDateIdea ? "Save Changes" : "Add Date Idea"} onPress={handleSave} />
+      </FormModal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.softWhite,
+    // When standalone, this takes full height, but when embedded, the parent ScrollView wraps it
+  },
+  // Removed headerGradient and header styles
+  content: {
+    flex: 1,
+    paddingTop: 0, // Ensure no extra top padding is applied here
+  },
+  section: {
+    marginBottom: 32,
+    paddingHorizontal: 24,
+  },
+  categoryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingLeft: 16,
+    borderLeftWidth: 4,
+  },
+  categoryTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  categoryTitle: {
+    fontSize: 22,
+    fontWeight: "600" as const,
+    color: Colors.text,
+  },
+  categoryCount: {
+    fontSize: 16,
+    color: Colors.textLight,
+    fontWeight: "500" as const,
+  },
+  dateCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    marginBottom: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  dateContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 12,
+  },
+  cardLeft: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cardImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardCenter: {
+    flex: 1,
+    gap: 4,
+  },
+  cardRight: {
+    padding: 8,
+  },
+  dateTitle: {
+    fontSize: 17,
+    fontWeight: "600" as const,
+    color: Colors.text,
+  },
+  completedText: {
+    textDecorationLine: "line-through",
+    color: Colors.textLight,
+  },
+  dateDescription: {
+    fontSize: 14,
+    color: Colors.textLight,
+    lineHeight: 20,
+  },
+  categorySelector: {
+    marginBottom: 20,
+  },
+  categoryLabel: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  categoryButtons: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  categoryButton: {
+    flex: 1,
+    minWidth: "45%",
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: Colors.border,
+    alignItems: "center",
+  },
+  categoryButtonActive: {
+    backgroundColor: Colors.darkGreen,
+  },
+  categoryButtonText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.textLight,
+  },
+  categoryButtonTextActive: {
+    color: "#FFF",
+  },
+});
+```
+
+### File: `app\modals\vision.tsx`
+
+```tsx
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from "react-native";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useApp } from "../../contexts/AppContext";
+import { useSettings } from "../../contexts/SettingsContext";
+import Colors from "../../constants/colors";
+import { Plus, Trash2, Edit3, Sparkles, ImagePlus } from "lucide-react-native";
+import { useState } from "react";
+import FormModal, { FormInput, FormButton } from "../../components/FormModal";
+import ActionMenu from "../../components/ActionMenu";
+import ConfirmDialog from "../../components/ConfirmDialog";
+import * as Haptics from "expo-haptics";
+import type { VisionBoardItem } from "../../types";
+
+export default function VisionScreen() {
+  // Correctly importing the new functions
+  const { visionBoard, addVisionItem, deleteVisionItem, updateVisionItem } = useApp();
+  const { settings } = useSettings();
+  const insets = useSafeAreaInsets();
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [editingItem, setEditingItem] = useState<VisionBoardItem | null>(null);
+  const [title, setTitle] = useState<string>("");
+  const [category, setCategory] = useState<string>("Travel");
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [actionMenuVisible, setActionMenuVisible] = useState<boolean>(false);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [anchorPosition, setAnchorPosition] = useState<{ x: number; y: number } | undefined>();
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState<boolean>(false);
+  const [itemToDelete, setItemToDelete] = useState<VisionBoardItem | null>(null);
+
+  const openModal = (item?: VisionBoardItem) => {
+    if (item) {
+      setEditingItem(item);
+      setTitle(item.title);
+      setCategory(item.category);
+      setImageUrl(item.imageUrl);
+    } else {
+      setEditingItem(null);
+      setTitle("");
+      setCategory("Travel");
+      setImageUrl("");
+    }
+    setModalVisible(true);
+  };
+
+  const handleSave = () => {
+    if (!title.trim() || !imageUrl.trim()) return;
+
+    if (editingItem) {
+      // Corrected to use updateVisionItem
+      updateVisionItem(editingItem.id, {
+        title: title.trim(),
+        category: category.trim(),
+        imageUrl: imageUrl.trim(),
+      });
+    } else {
+      addVisionItem({
+        id: Date.now().toString(),
+        title: title.trim(),
+        category: category.trim(),
+        imageUrl: imageUrl.trim(),
+      });
+    }
+
+    setTitle("");
+    setCategory("Travel");
+    setImageUrl("");
+    setModalVisible(false);
+  };
+
+  const handleLongPress = (itemId: string, event: any) => {
+    if (settings.hapticFeedback) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    
+    if (event?.nativeEvent) {
+      setAnchorPosition({
+        x: event.nativeEvent.pageX,
+        y: event.nativeEvent.pageY,
+      });
+    }
+    
+    setSelectedItemId(itemId);
+    setActionMenuVisible(true);
+  };
+  
+  // Grouping by Category
+  const groupedItems = visionBoard.reduce((acc, item) => {
+      const cat = item.category || "General";
+      if (!acc[cat]) {
+          acc[cat] = [];
+      }
+      acc[cat].push(item);
+      return acc;
+  }, {} as Record<string, VisionBoardItem[]>);
+  
+  const sortedCategories = Object.keys(groupedItems).sort();
+
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={[Colors.pastelGreen, Colors.softWhite]}
+        style={styles.headerGradient}
+      >
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.title}>Vision Board</Text>
+              <Text style={styles.subtitle}>{visionBoard.length} Dreams Visualized</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => openModal()}
+              activeOpacity={0.7}
+            >
+              <Plus size={24} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </LinearGradient>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {sortedCategories.map((category) => (
+          <View key={category} style={styles.section}>
+            <View style={[styles.sectionHeader, { borderLeftColor: Colors.lightBrown }]}>
+              <Sparkles size={18} color={Colors.lightBrown} />
+              <Text style={styles.sectionTitle}>{category}</Text>
+            </View>
+            <View style={styles.grid}>
+              {groupedItems[category].map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.visionCard}
+                  onLongPress={(e) => handleLongPress(item.id, e)}
+                  activeOpacity={0.9}
+                >
+                  <Image source={{ uri: item.imageUrl }} style={styles.visionImage} contentFit="cover" />
+                  <LinearGradient
+                    colors={["transparent", "rgba(0,0,0,0.7)"]}
+                    style={styles.overlay}
+                  >
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                    <Text style={styles.cardCategory}>{item.category}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ))}
+        <View style={{ height: 40 }} />
+      </ScrollView>
+
+      <ActionMenu
+        visible={actionMenuVisible}
+        anchorPosition={anchorPosition}
+        onClose={() => {
+          setActionMenuVisible(false);
+          setSelectedItemId(null);
+          setAnchorPosition(undefined);
+        }}
+        options={
+          selectedItemId
+            ? (() => {
+                const item = visionBoard.find((m) => m.id === selectedItemId);
+                if (!item) return [];
+                return [
+                  {
+                    label: "Edit",
+                    icon: Edit3,
+                    onPress: () => openModal(item),
+                    color: Colors.darkGreen,
+                  },
+                  {
+                    label: "Delete",
+                    icon: Trash2,
+                    onPress: () => {
+                      setItemToDelete(item);
+                      setActionMenuVisible(false);
+                      setConfirmDeleteVisible(true);
+                    },
+                    destructive: true,
+                  },
+                ];
+              })()
+            : []
+        }
+      />
+
+      <ConfirmDialog
+        visible={confirmDeleteVisible}
+        title="Delete Vision Item"
+        message={`Are you sure you want to delete "${itemToDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={() => {
+          if (itemToDelete) {
+            // Corrected to use deleteVisionItem
+            deleteVisionItem(itemToDelete.id); 
+          }
+          setConfirmDeleteVisible(false);
+          setItemToDelete(null);
+        }}
+        onCancel={() => {
+          setConfirmDeleteVisible(false);
+          setItemToDelete(null);
+        }}
+        destructive={true}
+      />
+
+      <FormModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={editingItem ? "Edit Vision Item" : "Add Vision Item"}
+      >
+        <FormInput
+          label="Title"
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Our Dream Vacation..."
+        />
+        <FormInput
+          label="Category (e.g., Home, Travel, Career)"
+          value={category}
+          onChangeText={setCategory}
+          placeholder="Travel"
+        />
+        <FormInput
+          label="Image URL"
+          value={imageUrl}
+          onChangeText={setImageUrl}
+          placeholder="https://..."
+        />
+        <FormButton title={editingItem ? "Save Changes" : "Add Vision Item"} onPress={handleSave} />
+      </FormModal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.softWhite,
+  },
+  headerGradient: {
+    paddingTop: 0,
+  },
+  header: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: Colors.textLight,
+  },
+  addButton: {
+    backgroundColor: Colors.darkGreen,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  content: {
+    flex: 1,
+    paddingTop: 16,
+  },
+  section: {
+    marginBottom: 32,
+    paddingHorizontal: 24,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "600" as const,
+    color: Colors.text,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 16,
+  },
+  visionCard: {
+    width: "48%",
+    aspectRatio: 1,
+    borderRadius: 20,
+    overflow: "hidden",
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  visionImage: {
+    width: "100%",
+    height: "100%",
+  },
+  overlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 12,
+    paddingBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: "#FFF",
+    marginBottom: 4,
+  },
+  cardCategory: {
+    fontSize: 12,
+    fontWeight: "500" as const,
+    color: "#FFF",
+    opacity: 0.8,
+  },
+});
 ```
 
 ### File: `components\ActionMenu.tsx`
@@ -3032,6 +3458,7 @@ import {
   TouchableWithoutFeedback,
   Animated,
   Dimensions,
+  Platform,
 } from "react-native";
 import { Edit3, Trash2, X } from "lucide-react-native";
 import Colors from "../constants/colors";
@@ -3055,39 +3482,39 @@ interface ActionMenuProps {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const MENU_WIDTH = 280;
-const MENU_ITEM_HEIGHT = 64;
+const MENU_WIDTH = 250;
+const MENU_PADDING = 10;
+const ITEM_HEIGHT = 48;
+const EDGE_MARGIN = 20; // Minimum margin from screen edges
+const MIN_DISTANCE_FROM_ANCHOR = 15; // Minimum space between press point and menu
 
 export default function ActionMenu({ visible, onClose, options, anchorPosition }: ActionMenuProps) {
   const { settings } = useSettings();
-  const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
     if (visible) {
-      // Haptic feedback on show
       if (settings.hapticFeedback) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
 
-      // Animate in from the side
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 200,
+          duration: 150,
           useNativeDriver: true,
         }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          tension: 80,
-          friction: 9,
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 150,
+          friction: 12,
           useNativeDriver: true,
         }),
       ]).start();
     } else {
-      // Reset animations
-      slideAnim.setValue(SCREEN_WIDTH);
       fadeAnim.setValue(0);
+      scaleAnim.setValue(0.95);
     }
   }, [visible, settings.hapticFeedback]);
 
@@ -3101,29 +3528,41 @@ export default function ActionMenu({ visible, onClose, options, anchorPosition }
 
   if (!visible) return null;
 
-  // Calculate menu position - appear on the right side of the item
-  let menuRight = 20;
-  let menuTop = SCREEN_HEIGHT / 2 - (options.length * MENU_ITEM_HEIGHT) / 2;
+  // --- POSITIONING LOGIC ---
+  const menuHeight = options.length * ITEM_HEIGHT + MENU_PADDING * 2 + (options.length > 0 ? options.length * 2 : 0);
+  
+  let menuLeft = EDGE_MARGIN;
+  let menuTop = (SCREEN_HEIGHT - menuHeight) / 2;
 
-  // If anchor position is provided, position menu beside it
   if (anchorPosition) {
-    // Position menu to the right of the touch point, or left if too close to right edge
-    if (anchorPosition.x < SCREEN_WIDTH / 2) {
-      // Item is on left side, show menu on right
-      menuRight = 20;
-      menuTop = Math.max(
-        20,
-        Math.min(anchorPosition.y - (options.length * MENU_ITEM_HEIGHT) / 2, SCREEN_HEIGHT - (options.length * MENU_ITEM_HEIGHT) - 20)
-      );
+    const { x: anchorX, y: anchorY } = anchorPosition;
+
+    // 1. Horizontal Position: Determine if there is more space on the left or right of the anchor point.
+    // Prefer showing the menu on the side that was *not* pressed for visual separation (e.g., if pressed on the left side of the screen, show menu on the right).
+    if (anchorX < SCREEN_WIDTH / 2) {
+      // Pressed on left side: Show menu on the right of the anchor.
+      menuLeft = anchorX + MIN_DISTANCE_FROM_ANCHOR;
+      // Ensure it doesn't push off the right edge. If it does, snap it left.
+      if (menuLeft + MENU_WIDTH > SCREEN_WIDTH - EDGE_MARGIN) {
+        menuLeft = SCREEN_WIDTH - MENU_WIDTH - EDGE_MARGIN;
+      }
     } else {
-      // Item is on right side, show menu on left
-      menuRight = SCREEN_WIDTH - MENU_WIDTH - 20;
-      menuTop = Math.max(
-        20,
-        Math.min(anchorPosition.y - (options.length * MENU_ITEM_HEIGHT) / 2, SCREEN_HEIGHT - (options.length * MENU_ITEM_HEIGHT) - 20)
-      );
+      // Pressed on right side: Show menu on the left of the anchor.
+      menuLeft = anchorX - MENU_WIDTH - MIN_DISTANCE_FROM_ANCHOR;
+      // Ensure it doesn't push off the left edge.
+      if (menuLeft < EDGE_MARGIN) {
+        menuLeft = EDGE_MARGIN;
+      }
     }
+
+    // 2. Vertical Position: Center menu's vertical middle near the anchor point.
+    menuTop = anchorY - menuHeight / 2;
+    
+    // Boundary checks (Top and Bottom)
+    menuTop = Math.max(EDGE_MARGIN, menuTop);
+    menuTop = Math.min(menuTop, SCREEN_HEIGHT - menuHeight - EDGE_MARGIN);
   }
+
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -3131,9 +3570,7 @@ export default function ActionMenu({ visible, onClose, options, anchorPosition }
         <Animated.View
           style={[
             styles.overlay,
-            {
-              opacity: fadeAnim,
-            },
+            { opacity: fadeAnim },
           ]}
         >
           <TouchableWithoutFeedback>
@@ -3141,39 +3578,32 @@ export default function ActionMenu({ visible, onClose, options, anchorPosition }
               style={[
                 styles.menu,
                 {
-                  right: menuRight,
+                  left: menuLeft,
                   top: menuTop,
-                  transform: [{ translateX: slideAnim }],
+                  width: MENU_WIDTH,
+                  transform: [{ scale: scaleAnim }],
                 },
               ]}
             >
-              <View style={styles.menuHeader}>
-                <Text style={styles.menuTitle}>Options</Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
-                  <X size={20} color={Colors.textLight} />
-                </TouchableOpacity>
-              </View>
-
               <View style={styles.menuContent}>
                 {options.map((option, index) => {
                   const IconComponent = option.icon;
                   const color = option.destructive
                     ? "#FF3B30"
-                    : option.color || Colors.text;
+                    : option.color || Colors.darkGreen;
+
                   return (
                     <TouchableOpacity
                       key={index}
                       style={[
                         styles.menuItem,
-                        index === options.length - 1 && styles.menuItemLast,
+                        index < options.length - 1 && styles.menuItemSeparator,
+                        { height: ITEM_HEIGHT, paddingHorizontal: 16 }
                       ]}
                       onPress={() => handleOptionPress(option)}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.iconContainer, { backgroundColor: color + "15" }]}>
-                        <IconComponent size={22} color={color} />
-                      </View>
-                      <View style={styles.menuItemContent}>
+                      <View style={styles.menuItemTextContainer}>
                         <Text style={[styles.menuItemText, { color }]}>
                           {option.label}
                         </Text>
@@ -3181,10 +3611,20 @@ export default function ActionMenu({ visible, onClose, options, anchorPosition }
                           <Text style={styles.destructiveHint}>This action cannot be undone</Text>
                         )}
                       </View>
+                      <View style={[styles.iconContainer, { backgroundColor: color + "15" }]}>
+                        <IconComponent size={20} color={color} />
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
               </View>
+              
+              {Platform.OS === 'android' && (
+                <TouchableOpacity onPress={onClose} style={styles.cancelButton} activeOpacity={0.7}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+
             </Animated.View>
           </TouchableWithoutFeedback>
         </Animated.View>
@@ -3196,76 +3636,71 @@ export default function ActionMenu({ visible, onClose, options, anchorPosition }
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    // Note: Removed centering justification/alignment here, relying solely on absolute positioning
   },
   menu: {
     position: "absolute",
-    backgroundColor: Colors.softWhite,
-    borderRadius: 20,
-    width: MENU_WIDTH,
-    shadowColor: "#000",
-    shadowOffset: { width: -4, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 16,
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    shadowColor: "#000", 
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 8,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: Colors.border + "30",
-  },
-  menuHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "30",
-    backgroundColor: Colors.cardBackground,
-  },
-  menuTitle: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: Colors.text,
-  },
-  closeButton: {
-    padding: 4,
+    borderColor: Colors.border,
   },
   menuContent: {
-    padding: 8,
+    paddingVertical: MENU_PADDING,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    justifyContent: "space-between",
     gap: 12,
-    borderRadius: 12,
-    marginBottom: 4,
-    minHeight: MENU_ITEM_HEIGHT,
+    marginVertical: 1,
   },
-  menuItemLast: {
-    marginBottom: 0,
+  menuItemSeparator: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  menuItemTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 2,
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+  },
+  destructiveHint: {
+    fontSize: 10,
+    color: Colors.textLight,
+    fontStyle: "italic",
+    marginTop: 2,
   },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
   },
-  menuItemContent: {
-    flex: 1,
+  cancelButton: {
+    backgroundColor: Colors.cream,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
-  menuItemText: {
+  cancelButtonText: {
     fontSize: 16,
-    fontWeight: "600" as const,
-    marginBottom: 2,
-  },
-  destructiveHint: {
-    fontSize: 11,
-    color: Colors.textLight,
-    fontStyle: "italic",
-  },
+    fontWeight: '600' as const,
+    color: Colors.text,
+  }
 });
-
 ```
 
 ### File: `components\ConfirmDialog.tsx`
@@ -3723,13 +4158,13 @@ export default {
 import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import type { Memory, VisionBoardItem, Goal, DateIdea, Place } from "../types";
+import type { Memory, Goal, DateIdea, Place } from "../types"; // REMOVED VisionBoardItem import
 
 const STORAGE_KEY = "couple_app_data";
 
 interface AppData {
   memories: Memory[];
-  visionBoard: VisionBoardItem[];
+  // REMOVED: visionBoard: VisionBoardItem[];
   goals: Goal[];
   dateIdeas: DateIdea[];
   places: Place[];
@@ -3752,20 +4187,7 @@ const initialData: AppData = {
       description: "Perfect evening together",
     },
   ],
-  visionBoard: [
-    {
-      id: "1",
-      imageUrl: "https://images.unsplash.com/photo-1464082354059-27db6ce50048?w=800",
-      title: "Dream Home",
-      category: "Home",
-    },
-    {
-      id: "2",
-      imageUrl: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800",
-      title: "Travel the World",
-      category: "Travel",
-    },
-  ],
+  // REMOVED: visionBoard initial data
   goals: [
     {
       id: "1",
@@ -3840,7 +4262,7 @@ const initialData: AppData = {
 
 export const [AppProvider, useApp] = createContextHook(() => {
   const [memories, setMemories] = useState<Memory[]>(initialData.memories);
-  const [visionBoard, setVisionBoard] = useState<VisionBoardItem[]>(initialData.visionBoard);
+  // REMOVED: visionBoard state
   const [goals, setGoals] = useState<Goal[]>(initialData.goals);
   const [dateIdeas, setDateIdeas] = useState<DateIdea[]>(initialData.dateIdeas);
   const [places, setPlaces] = useState<Place[]>(initialData.places);
@@ -3852,7 +4274,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       if (stored) {
         const data = JSON.parse(stored);
         setMemories(data.memories || initialData.memories);
-        setVisionBoard(data.visionBoard || initialData.visionBoard);
+        // REMOVED: visionBoard load logic
         setGoals(data.goals || initialData.goals);
         setDateIdeas(data.dateIdeas || initialData.dateIdeas);
         setPlaces(data.places || initialData.places);
@@ -3868,7 +4290,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     try {
       const currentData = {
         memories,
-        visionBoard,
+        // REMOVED: visionBoard save logic
         goals,
         dateIdeas,
         places,
@@ -3878,11 +4300,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } catch (error) {
       console.log("Error saving data:", error);
     }
-  }, [memories, visionBoard, goals, dateIdeas, places]);
+  }, [memories, goals, dateIdeas, places]); // REMOVED visionBoard dependency
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // --- MEMORY CRUD ---
 
   const addMemory = useCallback((memory: Memory) => {
     const updated = [memory, ...memories];
@@ -3909,11 +4333,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
     saveData({ memories: newMemories });
   }, [saveData]);
 
-  const addVisionItem = useCallback((item: VisionBoardItem) => {
-    const updated = [...visionBoard, item];
-    setVisionBoard(updated);
-    saveData({ visionBoard: updated });
-  }, [visionBoard, saveData]);
+  // --- VISION BOARD CRUD (REMOVED) ---
+  // Removed addVisionItem, deleteVisionItem, updateVisionItem functions
+
+  // --- GOAL CRUD ---
 
   const toggleGoal = useCallback((goalId: string) => {
     const updated = goals.map((goal) =>
@@ -3942,6 +4365,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
     setGoals(updated);
     saveData({ goals: updated });
   }, [goals, saveData]);
+
+  const reorderGoals = useCallback((newGoals: Goal[]) => {
+    setGoals(newGoals);
+    saveData({ goals: newGoals });
+  }, [saveData]);
+
+  // --- DATE IDEA CRUD ---
 
   const toggleDateIdea = useCallback((ideaId: string) => {
     const updated = dateIdeas.map((idea) =>
@@ -3976,6 +4406,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     saveData({ dateIdeas: newDateIdeas });
   }, [saveData]);
 
+  // --- PLACE (TRAVEL) CRUD ---
+
   const togglePlace = useCallback((placeId: string) => {
     const updated = places.map((place) =>
       place.id === placeId ? { ...place, visited: !place.visited } : place
@@ -4009,15 +4441,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
     saveData({ places: newPlaces });
   }, [saveData]);
 
-  const reorderGoals = useCallback((newGoals: Goal[]) => {
-    setGoals(newGoals);
-    saveData({ goals: newGoals });
-  }, [saveData]);
-
   return useMemo(
     () => ({
       memories,
-      visionBoard,
+      // REMOVED: visionBoard
       goals,
       dateIdeas,
       places,
@@ -4026,7 +4453,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       deleteMemory,
       updateMemory,
       reorderMemories,
-      addVisionItem,
+      // REMOVED: visionBoard handlers
       toggleGoal,
       addGoal,
       updateGoal,
@@ -4045,7 +4472,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }),
     [
       memories,
-      visionBoard,
+      // REMOVED: visionBoard
       goals,
       dateIdeas,
       places,
@@ -4054,7 +4481,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       deleteMemory,
       updateMemory,
       reorderMemories,
-      addVisionItem,
+      // REMOVED: visionBoard handlers
       toggleGoal,
       addGoal,
       updateGoal,
@@ -4073,7 +4500,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     ]
   );
 });
-
 ```
 
 ### File: `contexts\SettingsContext.tsx`
