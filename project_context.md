@@ -9,6 +9,7 @@ This file contains the directory structure and the contents of important project
 ├── .gitignore
 ├── app.json
 ├── babel.config.js
+├── eas.json
 ├── eslint.config.js
 ├── expo-env.d.ts
 ├── metro.config.js
@@ -96,8 +97,8 @@ yarn-error.*
 ```json
 {
   "expo": {
-    "name": "LoveNest Memories",
-    "slug": "lovenest-memories",
+    "name": "Rungano Rwedu",
+    "slug": "rungano-rwedu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -111,14 +112,14 @@ yarn-error.*
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.lovenest-memories"
+      "bundleIdentifier": "com.runganorwedu.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.lovenest_memories"
+      "package": "com.runganorwedu.app"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -135,9 +136,18 @@ yarn-error.*
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://rork.com/"
+      },
+      "eas": {
+        "projectId": "387f21c2-4d4d-4fbe-b76e-26806d58a900"
+      }
     }
   }
 }
+
 ```
 
 ### File: `babel.config.js`
@@ -150,6 +160,33 @@ module.exports = function (api) {
   };
 };
 
+
+```
+
+### File: `eas.json`
+
+```json
+{
+  "cli": {
+    "version": ">= 16.26.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
 
 ```
 
@@ -230,11 +267,15 @@ module.exports = config;
         "react": "19.1.0",
         "react-dom": "19.1.0",
         "react-native": "0.81.5",
+        "react-native-draggable-flatlist": "^4.0.3",
         "react-native-gesture-handler": "~2.28.0",
+        "react-native-reanimated": "~4.1.5",
         "react-native-safe-area-context": "~5.6.0",
         "react-native-screens": "~4.16.0",
         "react-native-svg": "15.12.1",
         "react-native-web": "^0.21.0",
+        "react-native-worklets": "0.5.1",
+        "react-native-worklets-core": "^1.6.2",
         "zustand": "^5.0.2"
       },
       "devDependencies": {
@@ -258,6 +299,19 @@ module.exports = config;
         "graphql": {
           "optional": true
         }
+      }
+    },
+    "node_modules/@alloc/quick-lru": {
+      "version": "5.2.0",
+      "resolved": "https://registry.npmjs.org/@alloc/quick-lru/-/quick-lru-5.2.0.tgz",
+      "integrity": "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==",
+      "license": "MIT",
+      "peer": true,
+      "engines": {
+        "node": ">=10"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
       }
     },
     "node_modules/@babel/code-frame": {
@@ -561,25 +615,7 @@ module.exports = config;
     "node_modules/@babel/helper-wrap-function": {
       "version": "7.28.3",
       "resolved": "https://registry.npmjs.org/@babel/helper-wrap-function/-/helper-wrap-function-7.28.3.tgz",
-      "integrity": "sha512-zdf983tNfLZFletc0RRXYrHrucBEg95NIFMkn6K9dbeMYnsgHaSBGcQqdsCSStG2PYwRre0Qc2NNSCXbG+xc6g==",
-      "license": "MIT",
-      "dependencies": {
-        "@babel/template": "^7.27.2",
-        "@babel/traverse": "^7.28.3",
-        "@babel/types": "^7.28.2"
-      },
-      "engines": {
-        "node": ">=6.9.0"
-      }
-    },
-    "node_modules/@babel/helpers": {
-      "version": "7.28.4",
-      "resolved": "https://registry.npmjs.org/@babel/helpers/-/helpers-7.28.4.tgz",
-      "integrity": "sha512-HFN59MmQXGHVyYadKLVumYsA9dBFun/ldYxipEjzA4196jpLZd8UjEEBLkbEkvfYreDqJhZxYAWFPtrfhNpj4w==",
-      "license": "MIT",
-      "dependencies": {
-        "@babel/template": "^7.27.2",
-        "@babel/type
+      "integrity": "sha512-zdf983tNfLZFletc0RRXYrHrucBEg95NIFMkn6K9dbeMY
 
 ... [Content truncated at 15000 characters] ...
 ```
@@ -595,7 +631,9 @@ module.exports = config;
     "start": "bunx rork start -p wys8p5usd4sbf1x849wyi --tunnel",
     "start-web": "bunx rork start -p wys8p5usd4sbf1x849wyi --web --tunnel",
     "start-web-dev": "DEBUG=expo* bunx rork start -p wys8p5usd4sbf1x849wyi --web --tunnel",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -4158,13 +4196,12 @@ export default {
 import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import type { Memory, Goal, DateIdea, Place } from "../types"; // REMOVED VisionBoardItem import
+import type { Memory, Goal, DateIdea, Place } from "../types"; 
 
 const STORAGE_KEY = "couple_app_data";
 
 interface AppData {
   memories: Memory[];
-  // REMOVED: visionBoard: VisionBoardItem[];
   goals: Goal[];
   dateIdeas: DateIdea[];
   places: Place[];
@@ -4187,7 +4224,6 @@ const initialData: AppData = {
       description: "Perfect evening together",
     },
   ],
-  // REMOVED: visionBoard initial data
   goals: [
     {
       id: "1",
@@ -4261,12 +4297,14 @@ const initialData: AppData = {
 };
 
 export const [AppProvider, useApp] = createContextHook(() => {
+  // --- 1. DEFINE ALL STATE VARIABLES FIRST (USESTATE) ---
   const [memories, setMemories] = useState<Memory[]>(initialData.memories);
-  // REMOVED: visionBoard state
   const [goals, setGoals] = useState<Goal[]>(initialData.goals);
   const [dateIdeas, setDateIdeas] = useState<DateIdea[]>(initialData.dateIdeas);
   const [places, setPlaces] = useState<Place[]>(initialData.places);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // --- 2. THEN DEFINE ALL HANDLER FUNCTIONS (USECALLBACK / USEEFFECT) ---
 
   const loadData = useCallback(async () => {
     try {
@@ -4274,7 +4312,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
       if (stored) {
         const data = JSON.parse(stored);
         setMemories(data.memories || initialData.memories);
-        // REMOVED: visionBoard load logic
         setGoals(data.goals || initialData.goals);
         setDateIdeas(data.dateIdeas || initialData.dateIdeas);
         setPlaces(data.places || initialData.places);
@@ -4290,7 +4327,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     try {
       const currentData = {
         memories,
-        // REMOVED: visionBoard save logic
         goals,
         dateIdeas,
         places,
@@ -4300,7 +4336,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     } catch (error) {
       console.log("Error saving data:", error);
     }
-  }, [memories, goals, dateIdeas, places]); // REMOVED visionBoard dependency
+  }, [memories, goals, dateIdeas, places]);
 
   useEffect(() => {
     loadData();
@@ -4332,9 +4368,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     setMemories(newMemories);
     saveData({ memories: newMemories });
   }, [saveData]);
-
-  // --- VISION BOARD CRUD (REMOVED) ---
-  // Removed addVisionItem, deleteVisionItem, updateVisionItem functions
 
   // --- GOAL CRUD ---
 
@@ -4441,10 +4474,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
     saveData({ places: newPlaces });
   }, [saveData]);
 
+  // --- 3. EXPORT VIA useMemo ---
   return useMemo(
     () => ({
       memories,
-      // REMOVED: visionBoard
       goals,
       dateIdeas,
       places,
@@ -4453,7 +4486,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
       deleteMemory,
       updateMemory,
       reorderMemories,
-      // REMOVED: visionBoard handlers
       toggleGoal,
       addGoal,
       updateGoal,
@@ -4472,7 +4504,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }),
     [
       memories,
-      // REMOVED: visionBoard
       goals,
       dateIdeas,
       places,
@@ -4481,7 +4512,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
       deleteMemory,
       updateMemory,
       reorderMemories,
-      // REMOVED: visionBoard handlers
       toggleGoal,
       addGoal,
       updateGoal,
