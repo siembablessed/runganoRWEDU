@@ -13,9 +13,7 @@
     },
     "production": {
       "autoIncrement": true,
-      "android": {
-        "packageManager": "npm"
-      }
+      "packageManager": "npm"  // FIX: Moved directly into the production profile
     }
   },
   "submit": {
