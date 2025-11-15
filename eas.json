@@ -12,8 +12,8 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "packageManager": "npm"  // FIX: Moved directly into the production profile
+      "autoIncrement": true
+      // FIX: The invalid "packageManager" line is removed from here.
     }
   },
   "submit": {
