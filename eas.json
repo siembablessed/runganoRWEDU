@@ -12,10 +12,8 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "node": {
-        "packageManager": "npm"
-      }
+      "autoIncrement": true
+      // FIX: Removing ALL custom, invalid packageManager/node configurations.
     }
   },
   "submit": {
