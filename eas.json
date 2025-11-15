@@ -12,13 +12,13 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "packageManager": "npm"
+      }
     }
   },
   "submit": {
     "production": {}
-  },
-  "android": { 
-    "packageManager": "npm"
   }
 }
