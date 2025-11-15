@@ -12,8 +12,10 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
-      // FIX: The invalid "packageManager" line is removed from here.
+      "autoIncrement": true,
+      "node": {
+        "packageManager": "npm"
+      }
     }
   },
   "submit": {
