@@ -3,9 +3,9 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "bunx rork start -p wys8p5usd4sbf1x849wyi --tunnel",
-    "start-web": "bunx rork start -p wys8p5usd4sbf1x849wyi --web --tunnel",
-    "start-web-dev": "DEBUG=expo* bunx rork start -p wys8p5usd4sbf1x849wyi --web --tunnel",
+    "start": "expo start",
+    "start-web": "expo start --web",
+    "start-web-dev": "expo start --web",
     "lint": "expo lint",
     "android": "expo run:android",
     "ios": "expo run:ios",

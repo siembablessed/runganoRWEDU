@@ -181,13 +181,13 @@ module.exports = function (api) {
     },
     "production": {
       "autoIncrement": true
+      // FIX: Removing ALL custom, invalid packageManager/node configurations.
     }
   },
   "submit": {
     "production": {}
   }
 }
-
 ```
 
 ### File: `eslint.config.js`
@@ -633,7 +633,8 @@ module.exports = config;
     "start-web-dev": "DEBUG=expo* bunx rork start -p wys8p5usd4sbf1x849wyi --web --tunnel",
     "lint": "expo lint",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "eas-build-pre-install": "npm ci"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -684,7 +685,6 @@ module.exports = config;
   },
   "private": true
 }
-
 ```
 
 ### File: `project_mapper.py`
@@ -824,7 +824,7 @@ if __name__ == "__main__":
 ### File: `README.md`
 
 ```md
-# Rungano Rwedu
+# Rungano Rwedu || our love story
 ```
 
 ### File: `tsconfig.json`
